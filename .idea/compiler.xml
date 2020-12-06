@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel target="15">
+      <module name="marid.commonMain" target="1.6" />
+      <module name="marid.commonTest" target="1.6" />
+      <module name="marid.jvmMain" target="1.6" />
+      <module name="marid.jvmTest" target="1.6" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
