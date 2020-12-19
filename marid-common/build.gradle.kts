@@ -1,8 +1,7 @@
 plugins {
-  kotlin("jvm")
+  java
 }
 
 dependencies {
-  implementation(kotlin("stdlib"))
-  testImplementation(kotlin("test-junit5"))
+  testImplementation(project(":marid-test"))
 }

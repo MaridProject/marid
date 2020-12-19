@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/marid-common.iml" filepath="$PROJECT_DIR$/.idea/modules/marid-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/marid-types.iml" filepath="$PROJECT_DIR$/.idea/modules/marid-types.iml" />
     </modules>
   </component>
 </project>
