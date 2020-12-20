@@ -28,7 +28,7 @@ subprojects {
 
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.javaParameters = true
-    kotlinOptions.jvmTarget = javaVersion.name
+    kotlinOptions.jvmTarget = javaVersion.toString()
   }
 
   dependencies {

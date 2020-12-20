@@ -15,39 +15,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.types;
+package org.marid.types
 
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.lang.reflect.GenericArrayType
+import java.lang.reflect.Type
 
-public final class IntersectionType implements Type {
+data class ArrayType(val componentType: Type) : GenericArrayType {
 
-  private final Type[] types;
+  override fun getGenericComponentType(): Type = componentType
 
-  IntersectionType(Type[] types) {
-    this.types = types;
+  override fun equals(other: Any?): Boolean = when {
+    other === this -> true
+    other is GenericArrayType -> other.genericComponentType == componentType
+    else -> false
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    } else if (o instanceof IntersectionType) {
-      var that = (IntersectionType) o;
-      return Arrays.equals(types, that.types);
-    } else {
-      return false;
-    }
-  }
+  override fun hashCode(): Int = componentType.hashCode()
 
-  @Override
-  public int hashCode() {
-    return Arrays.hashCode(types);
-  }
-
-  @Override
-  public final String toString() {
-    return Arrays.stream(types).map(Type::getTypeName).collect(Collectors.joining(" & "));
-  }
+  override fun toString(): String = componentType.typeName + "[]"
 }
