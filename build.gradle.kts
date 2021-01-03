@@ -1,5 +1,5 @@
 plugins {
-  kotlin("jvm").version("1.4.21").apply(false)
+  kotlin("jvm").version("1.4.21-2").apply(false)
   id("net.kyori.indra.license-header").version("1.2.1").apply(false)
 }
 

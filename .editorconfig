@@ -63,3 +63,7 @@ ij_kotlin_method_annotation_wrap = off
 [*.xml]
 indent_size = 2
 tab_width = 2
+
+[*.js]
+indent_size = 2
+ij_continuation_indent_size = 2

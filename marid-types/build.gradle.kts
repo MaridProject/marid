@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-  implementation(kotlin("stdlib-jdk8"))
-  implementation(kotlin("reflect"))
-  testImplementation(project(":marid-test"))
+  api(kotlin("stdlib-jdk8"))
+  api(kotlin("reflect"))
+  testApi(project(":marid-test"))
 }
