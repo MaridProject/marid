@@ -29,6 +29,34 @@ subprojects {
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.javaParameters = true
     kotlinOptions.jvmTarget = javaVersion.toString()
+    kotlinOptions.allWarningsAsErrors = true
+    kotlinOptions.freeCompilerArgs = listOf("-Xjvm-default=all")
+  }
+
+  tasks.withType<Test> {
+    maxParallelForks = 1
+
+    jvmArgs(
+      "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+      "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "--add-opens=java.base/java.nio=ALL-UNNAMED",
+      "--add-opens=java.management/sun.management=ALL-UNNAMED",
+      "--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED"
+    )
+
+    testLogging {
+      events = enumValues<org.gradle.api.tasks.testing.logging.TestLogEvent>().toSet()
+      exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+      showExceptions = true
+      showCauses = true
+      showStackTraces = true
+      showStandardStreams = true
+      maxGranularity = 3
+      minGranularity = 3
+    }
+
+    useJUnitPlatform()
   }
 
   dependencies {
