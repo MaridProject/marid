@@ -50,4 +50,10 @@ class TypeTest {
       .resolveType(List.class.getTypeParameters()[0]);
     assertEquals(Integer.class, type);
   }
+
+  @Test
+  void resolveType() {
+
+  }
 }
+
