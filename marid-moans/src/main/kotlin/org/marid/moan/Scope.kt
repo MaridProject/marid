@@ -88,16 +88,13 @@ class Scope(val name: String) : AutoCloseable {
 
     private fun close(name: String, moans: ConcurrentLinkedDeque<ScopedMoanHolder<*>>) {
       val ex = ScopeDestructionException(name)
-      val it = moans.descendingIterator()
-      while (it.hasNext()) {
-        val moan = it.next()
+      moans.removeIf { moan ->
         try {
           moan.close()
         } catch (x: Throwable) {
           ex.addSuppressed(x)
-        } finally {
-          it.remove()
         }
+        true
       }
       if (ex.suppressed.isNotEmpty()) {
         throw ex
