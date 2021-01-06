@@ -17,6 +17,17 @@
  */
 package org.marid.types
 
-class TypeResolver {
+import org.marid.common.Closer
+import java.nio.file.Files
 
+@Suppress("UNUSED_PARAMETER")
+class TypeResolver(classLoader: ClassLoader) : AutoCloseable {
+
+  private val tmpDir = Files.createTempDirectory("tr")
+
+  override fun close() {
+    Closer {
+      use(tmpDir)
+    }
+  }
 }
