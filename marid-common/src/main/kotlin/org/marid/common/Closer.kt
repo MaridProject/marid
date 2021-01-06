@@ -29,11 +29,12 @@ class Closer {
 
   private val closeables = ConcurrentLinkedDeque<AutoCloseable>()
 
-  fun use(closeable: AutoCloseable) {
+  fun <T: AutoCloseable> use(closeable: T): T {
     closeables += closeable
+    return closeable
   }
 
-  fun use(file: Path) {
+  fun <T: Path> use(file: T): T {
     closeables += AutoCloseable {
       fun delete(f: Path) {
         try {
@@ -55,9 +56,10 @@ class Closer {
       }
       delete(file)
     }
+    return file
   }
 
-  fun use(file: File) {
+  fun <T: File> use(file: T): T {
     closeables += AutoCloseable {
       fun delete(f: File) {
         if (f.isDirectory) {
@@ -72,9 +74,10 @@ class Closer {
       }
       delete(file)
     }
+    return file
   }
 
-  fun use(executor: ExecutorService, duration: Duration = Duration.ofMinutes(1L)) {
+  fun <T: ExecutorService> use(executor: T, duration: Duration = Duration.ofMinutes(1L)): T {
     closeables += AutoCloseable {
       executor.shutdown()
       if (!executor.awaitTermination(duration.toNanos(), TimeUnit.NANOSECONDS)) {
@@ -84,9 +87,10 @@ class Closer {
         }
       }
     }
+    return executor
   }
 
-  fun use(thread: Thread, interrupt: Boolean = false, duration: Duration = Duration.ofMinutes(1L)) {
+  fun <T: Thread> use(thread: T, interrupt: Boolean = false, duration: Duration = Duration.ofMinutes(1L)): T {
     closeables += AutoCloseable {
       if (thread.isAlive) {
         if (interrupt) {
@@ -102,15 +106,17 @@ class Closer {
         }
       }
     }
+    return thread
   }
 
-  fun use(any: Any) {
-    when (any) {
+  fun <T> use(any: T): T {
+    return when (any) {
       is AutoCloseable -> use(any)
       is Thread -> use(any)
       is ExecutorService -> use(any)
       is Path -> use(any)
       is File -> use(any)
+      else -> any
     }
   }
 

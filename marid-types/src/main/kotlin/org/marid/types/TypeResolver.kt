@@ -17,17 +17,53 @@
  */
 package org.marid.types
 
+import com.google.common.io.MoreFiles
+import com.google.common.io.RecursiveDeleteOption
+import com.google.common.jimfs.Configuration
+import com.google.common.jimfs.Jimfs
 import org.marid.common.Closer
-import java.nio.file.Files
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Path
+import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import javax.tools.Diagnostic
+import javax.tools.DiagnosticListener
+import javax.tools.FileObject
+import javax.tools.StandardLocation.*
+import javax.tools.ToolProvider.getSystemJavaCompiler
 
-@Suppress("UNUSED_PARAMETER")
-class TypeResolver(classLoader: ClassLoader) : AutoCloseable {
+class TypeResolver : AutoCloseable {
 
-  private val tmpDir = Files.createTempDirectory("tr")
+  private val fileSystem = Jimfs.newFileSystem(Configuration.unix())
+  private val baseDir = fileSystem.getPath("/work")
+  private val classOutputDir = baseDir.resolve("classes")
+  private val srcDir = baseDir.resolve("src")
+  private val genSrc = baseDir.resolve("genSrc")
+
+  private val javaCompiler = getSystemJavaCompiler()
+  private val diagnosticQueue = ConcurrentLinkedQueue<Diagnostic<out FileObject>>()
+  private val diagnostics = DiagnosticListener<FileObject> { diagnosticQueue += it }
+
+  private val fileManager = javaCompiler.getStandardFileManager(diagnostics, Locale.US, UTF_8)
+
+  init {
+    fileManager.setLocationFromPaths(CLASS_OUTPUT, listOf(classOutputDir))
+    fileManager.setLocationFromPaths(SOURCE_PATH, listOf(srcDir))
+    fileManager.setLocationFromPaths(SOURCE_OUTPUT, listOf(genSrc))
+  }
+
+  @Suppress("UnstableApiUsage")
+  private fun cleanDir(dir: Path) {
+    MoreFiles.deleteDirectoryContents(dir, RecursiveDeleteOption.ALLOW_INSECURE)
+  }
+
+  fun classPath(path: Collection<Path>) {
+    fileManager.setLocationFromPaths(CLASS_PATH, path)
+  }
 
   override fun close() {
     Closer {
-      use(tmpDir)
+      use(fileSystem)
     }
   }
 }
