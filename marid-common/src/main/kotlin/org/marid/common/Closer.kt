@@ -17,6 +17,7 @@
  */
 package org.marid.common
 
+import java.io.File
 import java.nio.file.*
 import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedDeque
@@ -56,6 +57,23 @@ class Closer {
     }
   }
 
+  fun use(file: File) {
+    closeables += AutoCloseable {
+      fun delete(f: File) {
+        if (f.isDirectory) {
+          val l = f.listFiles()
+          if (l != null) {
+            for (ff in l) {
+              delete(ff)
+            }
+          }
+        }
+        f.delete()
+      }
+      delete(file)
+    }
+  }
+
   fun use(executor: ExecutorService, duration: Duration = Duration.ofMinutes(1L)) {
     closeables += AutoCloseable {
       executor.shutdown()
@@ -83,6 +101,16 @@ class Closer {
           }
         }
       }
+    }
+  }
+
+  fun use(any: Any) {
+    when (any) {
+      is AutoCloseable -> use(any)
+      is Thread -> use(any)
+      is ExecutorService -> use(any)
+      is Path -> use(any)
+      is File -> use(any)
     }
   }
 
