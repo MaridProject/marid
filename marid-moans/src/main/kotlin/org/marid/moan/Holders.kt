@@ -193,4 +193,6 @@ abstract class MoanHolderTypeResolver<T> {
       .first { it.classifier == MoanHolderTypeResolver::class }
       .arguments[0]
       .type!!
+
+  override fun toString(): String = type.toString()
 }

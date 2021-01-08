@@ -68,7 +68,7 @@ class Context(val name: String, val parent: Context? = null) {
 
   inline fun <reified T> byType(): T {
     val t = object : MoanHolderTypeResolver<T>() {}
-    return (byType(t.type).firstOrNull()?.moan as T?) ?: throw NoSuchElementException(t.type.toString())
+    return (byType(t.type).firstOrNull()?.moan as T?) ?: throw NoSuchElementException(t.toString())
   }
 
   inline fun <reified T> seqByType(): Sequence<T> {

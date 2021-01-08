@@ -21,12 +21,18 @@ interface ContextAware {
 
   companion object {
     inline fun <reified T> ContextAware.byType(): T =
-      MoanHolder.contextFor(this)?.byType() ?: throw NoSuchElementException()
+      MoanHolder.contextFor(this)
+        ?.byType()
+        ?: throw NoSuchElementException(this::class.qualifiedName)
 
     inline fun <reified T> ContextAware.seqByType(): Sequence<T> =
-      MoanHolder.contextFor(this)?.seqByType() ?: throw NoSuchElementException()
+      MoanHolder.contextFor(this)
+        ?.seqByType()
+        ?: throw NoSuchElementException(this::class.qualifiedName)
 
     inline fun <reified T> ContextAware.byName(name: String): T =
-      MoanHolder.contextFor(this)?.byName(name) ?: throw NoSuchElementException()
+      MoanHolder.contextFor(this)
+        ?.byName(name)
+        ?: throw NoSuchElementException(this::class.qualifiedName)
   }
 }
