@@ -24,32 +24,32 @@ import kotlin.reflect.KClassifier
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 
-class Context(val name: String, val parent: Context?) {
+class Context(val name: String, val parent: Context? = null) {
 
   private val queue = ConcurrentLinkedDeque<MoanHolder<*>>()
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
   private val namedMap = ConcurrentHashMap<String, MoanHolder<*>>()
 
-  inline fun <reified T> singleton(name: String, noinline factory: () -> T): SingletonMoanHolder<T> {
+  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): SingletonMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = SingletonMoanHolder(name, t.type, factory)
+    val h = SingletonMoanHolder(name, t.type) { factory(this) }
     register(h)
     return h
   }
 
-  inline fun <reified T> bind(name: String, noinline factory: () -> T): SingletonMoanHolder<T> =
+  inline fun <reified T> bind(name: String, noinline factory: Context.() -> T): SingletonMoanHolder<T> =
     singleton(name, factory)
 
-  inline fun <reified T> prototype(name: String, noinline factory: () -> T): PrototypeMoanHolder<T> {
+  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): PrototypeMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = PrototypeMoanHolder(name, t.type, factory)
+    val h = PrototypeMoanHolder(name, t.type) { factory(this) }
     register(h)
     return h
   }
 
-  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: () -> T): ScopedMoanHolder<T> {
+  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): ScopedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = ScopedMoanHolder(name, t.type, factory)
+    val h = ScopedMoanHolder(name, t.type) { factory(this) }
     register(h, scope)
     return h
   }
