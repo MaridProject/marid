@@ -17,11 +17,14 @@
  */
 package org.marid.moan
 
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
 import kotlin.reflect.KType
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.isSubtypeOf
 
 class Context(val name: String, val parent: Context? = null) {
@@ -30,26 +33,35 @@ class Context(val name: String, val parent: Context? = null) {
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
   private val namedMap = ConcurrentHashMap<String, MoanHolder<*>>()
 
-  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): SingletonMoanHolder<T> {
+  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = SingletonMoanHolder(name, t.type) { factory(this) }
+    val h = if (T::class.isSubclassOf(ContextAware::class)) {
+      ContextSingletonMoanHolder(name, t.type, this) { factory(this) }
+    } else {
+      SingletonMoanHolder(name, t.type) { factory(this) }
+    }
     register(h)
     return h
   }
 
-  inline fun <reified T> bind(name: String, noinline factory: Context.() -> T): SingletonMoanHolder<T> =
-    singleton(name, factory)
-
-  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): PrototypeMoanHolder<T> {
+  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): StatelessMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = PrototypeMoanHolder(name, t.type) { factory(this) }
+    val h = if (T::class.isSubclassOf(ContextAware::class)) {
+      ContextPrototypeMoanHolder(name, t.type, this) { factory(this) }
+    } else {
+      PrototypeMoanHolder(name, t.type) { factory(this) }
+    }
     register(h)
     return h
   }
 
-  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): ScopedMoanHolder<T> {
+  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    val h = ScopedMoanHolder(name, t.type) { factory(this) }
+    val h = if (T::class.isSubclassOf(ContextAware::class)) {
+      ContextScopedMoanHolder(name, t.type, this) { factory(this) }
+    } else {
+      ScopedMoanHolder(name, t.type) { factory(this) }
+    }
     register(h, scope)
     return h
   }
