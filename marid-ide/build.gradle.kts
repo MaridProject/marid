@@ -6,6 +6,8 @@ plugins {
 val openjfxVersion = "15.0.1"
 
 dependencies {
+  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.0.1")
+
   implementation(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion)
   implementation(group = "org.openjfx", name = "javafx-media", version = openjfxVersion)
   implementation(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion)

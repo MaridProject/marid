@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
+import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.isSubtypeOf
@@ -79,6 +80,11 @@ class Context(val name: String, val parent: Context? = null) {
   inline fun <reified T> byName(name: String): T {
     val t = object : MoanHolderTypeResolver<T>() {}
     return byName(name, t.type).moan as T
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
+    return byName(property.name, property.returnType).moan as T
   }
 
   fun byType(type: KType): Sequence<MoanHolder<*>> {

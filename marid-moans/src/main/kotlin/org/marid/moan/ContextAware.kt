@@ -17,22 +17,22 @@
  */
 package org.marid.moan
 
+import kotlin.reflect.KProperty
+
 interface ContextAware {
+
+  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
+    MoanHolder.contextFor(this)?.getValue(thisRef, property) ?: throw ContextBoundException(this::class)
+  }
 
   companion object {
     inline fun <reified T> ContextAware.byType(): T =
-      MoanHolder.contextFor(this)
-        ?.byType()
-        ?: throw NoSuchElementException(this::class.qualifiedName)
+      MoanHolder.contextFor(this)?.byType<T>() ?: throw ContextBoundException(this::class)
 
     inline fun <reified T> ContextAware.seqByType(): Sequence<T> =
-      MoanHolder.contextFor(this)
-        ?.seqByType()
-        ?: throw NoSuchElementException(this::class.qualifiedName)
+      MoanHolder.contextFor(this)?.seqByType() ?: throw ContextBoundException(this::class)
 
     inline fun <reified T> ContextAware.byName(name: String): T =
-      MoanHolder.contextFor(this)
-        ?.byName(name)
-        ?: throw NoSuchElementException(this::class.qualifiedName)
+      MoanHolder.contextFor(this)?.byName<T>(name) ?: throw ContextBoundException(this::class)
   }
 }
