@@ -17,28 +17,11 @@
  */
 package org.marid.ide
 
-import com.sun.javafx.css.StyleManager
 import javafx.application.Application
-import javafx.application.Platform
-import javafx.scene.Scene
-import javafx.scene.control.Button
-import javafx.stage.Stage
 
-class App : Application() {
-
-  override fun init() {
-    setUserAgentStylesheet(STYLESHEET_CASPIAN)
-    val url = Thread.currentThread().contextClassLoader.getResource("dark.css")
-    if (url != null) {
-      Platform.runLater {
-        StyleManager.getInstance().addUserAgentStylesheet(url.toExternalForm())
-      }
-    }
-  }
-
-  override fun start(primaryStage: Stage) {
-    val scene = Scene(Button("XXX"), 800.0, 600.0)
-    primaryStage.scene = scene
-    primaryStage.show()
+object AppLauncher {
+  @JvmStatic
+  fun main(args: Array<String>) {
+    Application.launch(App::class.java, *args)
   }
 }
