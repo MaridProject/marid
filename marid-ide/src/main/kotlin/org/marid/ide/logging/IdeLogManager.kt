@@ -20,7 +20,7 @@ package org.marid.ide.logging
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.logging.LogManager
 
-object IdeLogManager : LogManager() {
+class IdeLogManager : LogManager() {
 
   private val resetEnabled = AtomicBoolean(true)
 
