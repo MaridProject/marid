@@ -19,20 +19,24 @@ package org.marid.moan
 
 abstract class Module(val context: Context) {
 
-  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> =
-    context.singleton(name, factory)
+  inline fun <reified M : Module> init(module: M): M {
+    module.initialize()
+    return module
+  }
 
-  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): StatelessMoanHolder<T> =
-    context.prototype(name, factory)
+  open val preInit: Context.() -> Unit = {}
+  abstract val init: Context.() -> Unit
+  open val postInit: Context.() -> Unit = {}
 
-  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): MemoizedMoanHolder<T> =
-    context.scoped(name, scope, factory)
-
-  inline fun <reified T> by(): T = context.byType()
-  inline fun <reified T> seq(): Seq<T> = context.seqByType()
-  inline fun <reified T> by(name: String): T = context.byName(name)
-
-  abstract fun initialize()
+  fun initialize() {
+    try {
+      preInit(context)
+      init(context)
+      postInit(context)
+    } catch (e: Throwable) {
+      throw ModuleInitializationException(toString(), e)
+    }
+  }
 
   override fun toString(): String = "${context.name}.${javaClass.name}"
 }

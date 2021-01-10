@@ -83,36 +83,34 @@ abstract class ReflectionModule(context: Context) : Module(context) {
     return args
   }
 
-  override fun initialize() {
-    for (callable in this::class.members) {
-      val singleton = callable.findAnnotation<Singleton>()
-      if (singleton != null) {
-        val name = singleton.name.takeIf { it.isNotBlank() } ?: callable.name
-        val type = callable.returnType
-        val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-          SingletonMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-        } else {
-          SingletonMoanHolder(name, type) { callable.callBy(args(callable)) }
+  override val init: Context.() -> Unit
+    get() = {
+      for (callable in this::class.members) {
+        val singleton = callable.findAnnotation<Singleton>()
+        if (singleton != null) {
+          val name = singleton.name.takeIf { it.isNotBlank() } ?: callable.name
+          val type = callable.returnType
+          val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+            SingletonMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+          } else {
+            SingletonMoanHolder(name, type) { callable.callBy(args(callable)) }
+          }
+          context.register(h)
+          continue
         }
-        context.register(h)
-        continue
-      }
-      val prototype = callable.findAnnotation<Prototype>()
-      if (prototype != null) {
-        val name = prototype.name.takeIf { it.isNotBlank() } ?: callable.name
-        val type = callable.returnType
-        val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-          PrototypeMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-        } else {
-          PrototypeMoanHolder(name, type) { callable.callBy(args(callable)) }
+        val prototype = callable.findAnnotation<Prototype>()
+        if (prototype != null) {
+          val name = prototype.name.takeIf { it.isNotBlank() } ?: callable.name
+          val type = callable.returnType
+          val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+            PrototypeMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+          } else {
+            PrototypeMoanHolder(name, type) { callable.callBy(args(callable)) }
+          }
+          context.register(h)
         }
-        context.register(h)
       }
     }
-    alsoInitialize()
-  }
-
-  open fun alsoInitialize() {}
 
   protected companion object {
     @Retention(AnnotationRetention.RUNTIME)

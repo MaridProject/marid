@@ -26,8 +26,8 @@ interface ContextAware {
   operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
 
   companion object {
-    inline fun <reified T> ContextAware.byType(): T = context.byType()
-    inline fun <reified T> ContextAware.seqByType(): Seq<T> = context.seqByType()
-    inline fun <reified T> ContextAware.byName(name: String): T = context.byName<T>(name)
+    inline fun <reified T> ContextAware.byType(): T = context.by()
+    inline fun <reified T> ContextAware.seqByType(): Seq<T> = context.seq()
+    inline fun <reified T> ContextAware.byName(name: String): T = context.by<T>(name)
   }
 }

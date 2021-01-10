@@ -17,6 +17,7 @@
  */
 package org.marid.moan
 
+import java.lang.ref.Cleaner
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
@@ -28,11 +29,28 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.isSubtypeOf
 
-class Context(val name: String, val parent: Context? = null) {
+typealias Closer = (Runnable) -> Runnable
+
+class Context private constructor(val name: String, val parent: Context?, closer: Closer) : AutoCloseable {
 
   private val queue = ConcurrentLinkedDeque<MoanHolder<*>>()
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
   private val namedMap = ConcurrentHashMap<String, MoanHolder<*>>()
+  private val closeListeners = ConcurrentLinkedDeque<() -> Unit>()
+  private val cleanRef: Cleaner.Cleanable
+
+  init {
+    if (parent != null) {
+      closeListeners.addFirst { close() }
+    }
+    val name = this.name
+    val queue = this.queue
+    val typedMap = this.typedMap
+    val namedMap = this.namedMap
+    val closeListeners = this.closeListeners
+    val closeTask = Runnable { close(name, queue, typedMap, namedMap, closeListeners) }
+    cleanRef = CLEANER.register(this, closer(closeTask))
+  }
 
   inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
@@ -67,18 +85,18 @@ class Context(val name: String, val parent: Context? = null) {
     return h
   }
 
-  inline fun <reified T> byType(): T {
+  inline fun <reified T> by(): T {
     val t = object : MoanHolderTypeResolver<T>() {}
     return (byType(t.type).firstOrNull()?.moan as T?) ?: throw NoSuchElementException(t.toString())
   }
 
-  inline fun <reified T> seqByType(): Seq<T> {
+  inline fun <reified T> seq(): Seq<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
     val s = byType(t.type).map { it.moan as T }
     return Seq { s.iterator() }
   }
 
-  inline fun <reified T> byName(name: String): T {
+  inline fun <reified T> by(name: String): T {
     val t = object : MoanHolderTypeResolver<T>() {}
     return byName(name, t.type).moan as T
   }
@@ -148,24 +166,77 @@ class Context(val name: String, val parent: Context? = null) {
     }
   }
 
+  inline fun <reified M : Module> init(module: M): M {
+    try {
+      module.initialize()
+    } catch (e: Throwable) {
+      try {
+        close()
+      } catch (x: Throwable) {
+        e.addSuppressed(x)
+      }
+      throw e
+    }
+    return module
+  }
+
+  override fun close() = cleanRef.clean()
+
   override fun toString(): String = "Context($name)"
 
   companion object {
 
-    private val contextMap = WeakHashMap<Any, Context>()
+    private val CONTEXT_MAP = WeakHashMap<Any, Context>()
+    private val CLEANER = Cleaner.create()
+
+    operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
 
     fun <T> withContext(context: Context, t: T): T {
-      synchronized(contextMap) {
-        contextMap[t] = context
+      synchronized(CONTEXT_MAP) {
+        CONTEXT_MAP[t] = context
       }
       return t
     }
 
-    fun contextFor(obj: ContextAware): Context? = synchronized(contextMap) { contextMap[obj] }
+    fun contextFor(obj: ContextAware): Context? = synchronized(CONTEXT_MAP) { CONTEXT_MAP[obj] }
 
     fun <T, H : MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
       postConstructHooks.add(hook)
       return this
+    }
+
+    private fun close(
+      name: String,
+      queue: ConcurrentLinkedDeque<MoanHolder<*>>,
+      typedMap: ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>,
+      namedMap: ConcurrentHashMap<String, MoanHolder<*>>,
+      closeListeners: ConcurrentLinkedDeque<() -> Unit>
+    ) {
+      typedMap.clear()
+      namedMap.clear()
+      val exception = ContextCloseException(name)
+      closeListeners.removeIf {
+        try {
+          it()
+        } catch (e: Throwable) {
+          exception.addSuppressed(e)
+        }
+        true
+      }
+      val it = queue.descendingIterator()
+      while (it.hasNext()) {
+        val e = it.next()
+        try {
+          e.close()
+        } catch (x: Throwable) {
+          exception.addSuppressed(x)
+        } finally {
+          it.remove()
+        }
+      }
+      if (exception.suppressed.isNotEmpty()) {
+        throw exception
+      }
     }
   }
 }
