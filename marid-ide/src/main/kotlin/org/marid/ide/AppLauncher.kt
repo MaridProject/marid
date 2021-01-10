@@ -20,15 +20,12 @@ package org.marid.ide
 import javafx.application.Application
 import org.marid.ide.logging.IdeLogHandler
 import org.marid.ide.logging.IdeLogManager
-import java.util.logging.LogManager
 import java.util.logging.Logger
 
 object AppLauncher {
-  @JvmStatic
-  fun main(args: Array<String>) {
+  @JvmStatic fun main(args: Array<String>) {
     // initialize logging
-    System.setProperty("java.util.logging.manager", IdeLogManager::class.qualifiedName!!)
-    LogManager.getLogManager().reset()
+    System.setProperty("java.util.logging.manager", IdeLogManager::class.java.name)
     Logger.getLogger("").addHandler(IdeLogHandler)
     // launch JavaFX application
     Application.launch(App::class.java, *args)

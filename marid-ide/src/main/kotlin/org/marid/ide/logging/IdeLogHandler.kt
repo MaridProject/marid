@@ -98,13 +98,14 @@ object IdeLogHandler : Handler() {
       fmt.append(record.message)
     } else {
       try {
-        fmt.append(MessageFormat.format(record.message, record.parameters))
+        fmt.append(MessageFormat.format(record.message, *record.parameters))
       } catch (_: Throwable) {
         fmt.append(record.message)
       }
     }
     fmt.println()
     record.thrown?.printStackTrace(fmt)
+    fmt.flush()
     try {
       buf.writeTo(channel)
       buf.writeTo(System.out)

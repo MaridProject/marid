@@ -15,18 +15,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.ide.logging
+package org.marid.ide.logging;
 
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.logging.LogManager
+import java.io.InputStream;
+import java.util.logging.LogManager;
 
-class IdeLogManager : LogManager() {
+public class IdeLogManager extends LogManager {
+  public IdeLogManager() {
+    super.reset();
+  }
 
-  private val resetEnabled = AtomicBoolean(true)
+  @Override
+  public void reset() throws SecurityException {
+  }
 
-  override fun reset() {
-    if (resetEnabled.compareAndSet(true, false)) {
-      super.reset()
-    }
+  @Override
+  public void readConfiguration() throws SecurityException {
+  }
+
+  @Override
+  public void readConfiguration(InputStream ins) throws SecurityException {
   }
 }

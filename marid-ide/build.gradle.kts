@@ -7,6 +7,7 @@ val openjfxVersion = "15.0.1"
 
 dependencies {
   implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.0.1")
+  implementation(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
 
   implementation(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion)
   implementation(group = "org.openjfx", name = "javafx-media", version = openjfxVersion)

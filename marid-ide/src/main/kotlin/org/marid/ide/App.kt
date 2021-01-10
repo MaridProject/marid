@@ -23,15 +23,18 @@ import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.stage.Stage
+import org.marid.ide.logging.logger
 
 class App : Application() {
 
   override fun init() {
+    logger.info("Setting UA stylesheet")
     setUserAgentStylesheet(STYLESHEET_CASPIAN)
     val url = Thread.currentThread().contextClassLoader.getResource("dark.css")
     if (url != null) {
       Platform.runLater {
         StyleManager.getInstance().addUserAgentStylesheet(url.toExternalForm())
+        logger.info("UA stylesheet is set to {0}", getUserAgentStylesheet())
       }
     }
   }

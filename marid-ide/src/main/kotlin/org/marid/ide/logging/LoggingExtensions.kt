@@ -23,38 +23,102 @@ import java.util.logging.Level
 import java.util.logging.LogRecord
 import java.util.logging.Logger
 
-inline val Any.log: Logger get() = Logger.getLogger(this.javaClass.name)
+@Suppress("EXPERIMENTAL_FEATURE_WARNING")
+inline class MaridLogger(val logger: Logger) {
 
-inline val LOG_INFO: Level get() = Level.INFO
-inline val LOG_WARNING: Level get() = Level.WARNING
-inline val LOG_ERROR: Level get() = Level.SEVERE
-inline val LOG_CONFIG: Level get() = Level.CONFIG
-inline val LOG_TRACE: Level get() = Level.FINE
+  inline fun record(level: Level, message: String): LogRecord {
+    val record = LogRecord(level, message)
+    record.loggerName = logger.name
+    return record
+  }
 
-inline operator fun Logger.invoke(level: Level, message: String) {
-  val record = LogRecord(level, message)
-  record.loggerName = name
-  log(record)
+  inline fun log(level: Level, message: String) {
+    logger.log(record(level, message))
+  }
+
+  inline fun log(level: Level, message: String, thrown: Throwable) {
+    logger.log(record(level, message).also { it.thrown = thrown })
+  }
+
+  inline fun log(level: Level, message: String, thrown: Throwable, vararg args: Any?) {
+    logger.log(record(level, message).also { it.thrown = thrown; it.parameters = args })
+  }
+
+  inline fun log(level: Level, message: String, vararg args: Any?) {
+    logger.log(record(level, message).also { it.parameters = args })
+  }
+
+  inline fun info(message: String) {
+    logger.log(record(Level.INFO, message))
+  }
+
+  inline fun info(message: String, vararg args: Any?) {
+    logger.log(record(Level.INFO, message).also { it.parameters = args })
+  }
+
+  inline fun warn(message: String) {
+    logger.log(record(Level.WARNING, message))
+  }
+
+  inline fun warn(message: String, thrown: Throwable) {
+    logger.log(record(Level.WARNING, message).also { it.thrown = thrown })
+  }
+
+  inline fun warn(message: String, thrown: Throwable, vararg args: Any?) {
+    logger.log(record(Level.WARNING, message).also { it.thrown = thrown; it.parameters = args })
+  }
+
+  inline fun warn(message: String, vararg args: Any?) {
+    logger.log(record(Level.WARNING, message).also { it.parameters = args })
+  }
+
+  inline fun error(message: String) {
+    logger.log(record(Level.SEVERE, message))
+  }
+
+  inline fun error(message: String, thrown: Throwable) {
+    logger.log(record(Level.SEVERE, message).also { it.thrown = thrown })
+  }
+
+  inline fun error(message: String, thrown: Throwable, vararg args: Any?) {
+    logger.log(record(Level.SEVERE, message).also { it.thrown = thrown; it.parameters = args })
+  }
+
+  inline fun error(message: String, vararg args: Any?) {
+    logger.log(record(Level.SEVERE, message).also { it.parameters = args })
+  }
+
+  inline fun config(message: String) {
+    logger.log(record(Level.CONFIG, message))
+  }
+
+  inline fun config(message: String, thrown: Throwable) {
+    logger.log(record(Level.CONFIG, message).also { it.thrown = thrown })
+  }
+
+  inline fun config(message: String, thrown: Throwable, vararg args: Any?) {
+    logger.log(record(Level.CONFIG, message).also { it.thrown = thrown; it.parameters = args })
+  }
+
+  inline fun config(message: String, vararg args: Any?) {
+    logger.log(record(Level.CONFIG, message).also { it.parameters = args })
+  }
+
+  inline fun trace(message: String) {
+    logger.log(record(Level.FINE, message))
+  }
+
+  inline fun trace(message: String, thrown: Throwable) {
+    logger.log(record(Level.FINE, message).also { it.thrown = thrown })
+  }
+
+  inline fun trace(message: String, thrown: Throwable, vararg args: Any?) {
+    logger.log(record(Level.FINE, message).also { it.thrown = thrown; it.parameters = args })
+  }
+
+  inline fun trace(message: String, vararg args: Any?) {
+    logger.log(record(Level.FINE, message).also { it.parameters = args })
+  }
 }
 
-inline operator fun Logger.invoke(level: Level, message: String, thrown: Throwable) {
-  val record = LogRecord(level, message)
-  record.loggerName = name
-  record.thrown = thrown
-  log(record)
-}
-
-inline operator fun Logger.invoke(level: Level, message: String, thrown: Throwable, vararg args: Any?) {
-  val record = LogRecord(level, message)
-  record.loggerName = name
-  record.thrown = thrown
-  record.parameters = args
-  log(record)
-}
-
-inline operator fun Logger.invoke(level: Level, message: String, vararg args: Any?) {
-  val record = LogRecord(level, message)
-  record.loggerName = name
-  record.parameters = args
-  log(record)
-}
+inline val Any.logger: MaridLogger get() = MaridLogger(Logger.getLogger(this::javaClass.name))
