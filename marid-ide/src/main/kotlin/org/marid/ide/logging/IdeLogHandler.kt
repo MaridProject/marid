@@ -66,6 +66,8 @@ object IdeLogHandler : Handler() {
     val buf = ByteArrayOutputStream(128)
     val fmt = PrintWriter(OutputStreamWriter(buf, StandardCharsets.UTF_8))
     fmt.append(LocalDateTime.ofInstant(record.instant, ZoneId.systemDefault()).format(dtFormat))
+    fmt.append(' ').append(record.level.name).append(' ')
+    fmt.append(record.sourceClassName?.let { it + "." + record.sourceMethodName } ?: record.loggerName).append(' ')
     if (record.parameters.isNullOrEmpty()) {
       fmt.append(record.message)
     } else {

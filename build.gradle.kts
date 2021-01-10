@@ -17,6 +17,14 @@ subprojects {
     jcenter()
   }
 
+  afterEvaluate {
+    tasks.getByName("clean") {
+      dependsOn(
+        tasks.getByName("updateLicenses")
+      )
+    }
+  }
+
   configure<JavaPluginConvention> {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
