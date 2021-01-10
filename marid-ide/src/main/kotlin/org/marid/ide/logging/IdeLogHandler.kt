@@ -18,6 +18,7 @@
 package org.marid.ide.logging
 
 import java.io.*
+import java.lang.ref.WeakReference
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -28,8 +29,10 @@ import java.time.LocalDateTime.now
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter.ofPattern
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 import java.util.logging.Handler
+import java.util.logging.Level
 import java.util.logging.LogRecord
 
 object IdeLogHandler : Handler() {
@@ -38,6 +41,7 @@ object IdeLogHandler : Handler() {
   private val outputFile = outputDir.resolve(now().format(ofPattern("yyyy-MM-dd-HH-mm-ss-SSS'.log'")))
   private val channel = FileOutputStream(outputFile.toFile())
   private val dtFormat = ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
+  private val listeners = ConcurrentLinkedQueue<WeakReference<(LogRecord) -> Unit>>()
 
   init {
     Files.newDirectoryStream(outputDir, "*.log").use { logs ->
@@ -54,11 +58,33 @@ object IdeLogHandler : Handler() {
         }
       }
     }
+    level = Level.INFO
+  }
+
+  operator fun plusAssign(listener: (LogRecord) -> Unit) {
+    listeners += WeakReference(listener)
+  }
+
+  operator fun minusAssign(listener: (LogRecord) -> Unit) {
+    listeners.removeIf { l -> l.get()?.let { it === listener } ?: true }
   }
 
   override fun publish(record: LogRecord) {
     if (record.message == null) {
       return
+    }
+    listeners.removeIf {
+      val l = it.get()
+      if (l == null) {
+        true
+      } else {
+        try {
+          l(record)
+        } catch (e: Throwable) {
+          e.printStackTrace()
+        }
+        false
+      }
     }
     if (!isLoggable(record)) {
       return
@@ -81,6 +107,7 @@ object IdeLogHandler : Handler() {
     record.thrown?.printStackTrace(fmt)
     try {
       buf.writeTo(channel)
+      buf.writeTo(System.out)
     } catch (_: Throwable) {
       // do nothing
     }

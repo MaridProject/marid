@@ -23,7 +23,7 @@ import java.util.logging.Level
 import java.util.logging.LogRecord
 import java.util.logging.Logger
 
-inline val <reified T> T.log: Logger get() = Logger.getLogger(T::class.qualifiedName ?: "marid")
+inline val Any.log: Logger get() = Logger.getLogger(this.javaClass.name)
 
 inline val LOG_INFO: Level get() = Level.INFO
 inline val LOG_WARNING: Level get() = Level.WARNING
