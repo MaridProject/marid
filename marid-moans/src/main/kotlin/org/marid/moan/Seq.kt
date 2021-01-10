@@ -17,17 +17,8 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KProperty
-
-interface ContextAware {
-
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
-
-  companion object {
-    inline fun <reified T> ContextAware.byType(): T = context.byType()
-    inline fun <reified T> ContextAware.seqByType(): Seq<T> = context.seqByType()
-    inline fun <reified T> ContextAware.byName(name: String): T = context.byName<T>(name)
-  }
+fun interface Seq<T> {
+  fun iterator(): Iterator<T>
+  val isEmpty: Boolean get() = iterator().hasNext()
+  val isNotEmpty: Boolean get() = !isEmpty
 }

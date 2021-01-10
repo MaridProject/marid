@@ -72,9 +72,10 @@ class Context(val name: String, val parent: Context? = null) {
     return (byType(t.type).firstOrNull()?.moan as T?) ?: throw NoSuchElementException(t.toString())
   }
 
-  inline fun <reified T> seqByType(): Sequence<T> {
+  inline fun <reified T> seqByType(): Seq<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
-    return byType(t.type).map { it.moan as T }
+    val s = byType(t.type).map { it.moan as T }
+    return Seq { s.iterator() }
   }
 
   inline fun <reified T> byName(name: String): T {
@@ -111,7 +112,19 @@ class Context(val name: String, val parent: Context? = null) {
           else ->
             when (parent) {
               null -> throw ClassCastException("Moan $name of ${m.type} cannot be cast to $type")
-              else -> parent.byName(name, type)
+              else -> {
+                try {
+                  parent.byName(name, type)
+                } catch (e: NoSuchElementException) {
+                  val x = ClassCastException("Moan $name of ${m.type} cannot be cast to $type")
+                  x.initCause(e)
+                  throw x
+                } catch (e: ClassCastException) {
+                  val x = ClassCastException("Moan $name of ${m.type} cannot be cast to $type")
+                  x.initCause(e)
+                  throw x
+                }
+              }
             }
         }
     }

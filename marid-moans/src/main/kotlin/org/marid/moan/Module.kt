@@ -17,17 +17,22 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KProperty
+abstract class Module(val context: Context) {
 
-interface ContextAware {
+  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> =
+    context.singleton(name, factory)
 
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
+  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): StatelessMoanHolder<T> =
+    context.prototype(name, factory)
 
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
+  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): MemoizedMoanHolder<T> =
+    context.scoped(name, scope, factory)
 
-  companion object {
-    inline fun <reified T> ContextAware.byType(): T = context.byType()
-    inline fun <reified T> ContextAware.seqByType(): Seq<T> = context.seqByType()
-    inline fun <reified T> ContextAware.byName(name: String): T = context.byName<T>(name)
-  }
+  inline fun <reified T> by(): T = context.byType()
+  inline fun <reified T> seq(): Seq<T> = context.seqByType()
+  inline fun <reified T> by(name: String): T = context.byName(name)
+
+  abstract fun initialize()
+
+  override fun toString(): String = "${context.name}.${javaClass.name}"
 }
