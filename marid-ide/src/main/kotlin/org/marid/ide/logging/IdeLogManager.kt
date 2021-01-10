@@ -15,22 +15,18 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.ide
+package org.marid.ide.logging
 
-import javafx.application.Application
-import org.marid.ide.logging.IdeLogHandler
-import org.marid.ide.logging.IdeLogManager
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.logging.LogManager
-import java.util.logging.Logger
 
-object AppLauncher {
-  @JvmStatic
-  fun main(args: Array<String>) {
-    // initialize logging
-    System.setProperty("java.util.logging.manager", IdeLogManager::class.qualifiedName!!)
-    LogManager.getLogManager().reset()
-    Logger.getLogger("").addHandler(IdeLogHandler)
-    // launch JavaFX application
-    Application.launch(App::class.java, *args)
+object IdeLogManager : LogManager() {
+
+  private val resetEnabled = AtomicBoolean(true)
+
+  override fun reset() {
+    if (resetEnabled.compareAndSet(true, false)) {
+      super.reset()
+    }
   }
 }

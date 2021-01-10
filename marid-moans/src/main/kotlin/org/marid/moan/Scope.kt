@@ -19,35 +19,38 @@ package org.marid.moan
 
 import java.lang.ref.Cleaner
 import java.math.BigInteger
+import java.math.BigInteger.TEN
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.atomic.AtomicReference
-import java.util.logging.Level
+import java.util.logging.Level.WARNING
 import java.util.logging.LogRecord
-import java.util.logging.Logger
+import java.util.logging.Logger.getLogger
 import kotlin.concurrent.thread
 
 class Scope(val name: String) : AutoCloseable {
 
   private val moans = ConcurrentLinkedDeque<ScopedMoanHolder<*>>()
-  private val uid = nextUid()
+  private val uid = UIDS.getAndUpdate { it.inc() }
+  private val locks = generateSequence { Object() }.take(10).toList()
 
   internal fun add(holder: ScopedMoanHolder<*>) {
-    CLEANABLES.computeIfAbsent(uid) { uid ->
-      val moans = this.moans
-      val contextName = name
-      CLEANER.register(this) {
-        try {
-          close(contextName, moans)
-        } catch (e: Throwable) {
-          val logger = Logger.getLogger("Scope")
-          val record = LogRecord(Level.WARNING, "Unable to close scope")
-          record.thrown = e
-          record.loggerName = "Scope"
-          record.sourceClassName = null
-          logger.log(record)
-        } finally {
-          CLEANABLES.remove(uid)
+    synchronized(locks[(uid % TEN).toInt()]) {
+      CLEANABLES.computeIfAbsent(uid) { uid ->
+        val moans = this.moans
+        val contextName = name
+        CLEANER.register(this) {
+          try {
+            close(contextName, moans)
+          } catch (e: Throwable) {
+            val record = LogRecord(WARNING, "Unable to close scope")
+            record.thrown = e
+            record.loggerName = "Scope"
+            record.sourceClassName = null
+            getLogger(record.loggerName).log(record)
+          } finally {
+            CLEANABLES.remove(uid)
+          }
         }
       }
     }
@@ -83,8 +86,6 @@ class Scope(val name: String) : AutoCloseable {
         }
       })
     }
-
-    private fun nextUid() = UIDS.getAndUpdate { it.inc() }
 
     private fun close(name: String, moans: ConcurrentLinkedDeque<ScopedMoanHolder<*>>) {
       val ex = ScopeDestructionException(name)
