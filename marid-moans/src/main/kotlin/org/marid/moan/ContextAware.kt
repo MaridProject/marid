@@ -21,18 +21,13 @@ import kotlin.reflect.KProperty
 
 interface ContextAware {
 
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
-    MoanHolder.contextFor(this)?.getValue(thisRef, property) ?: throw ContextBoundException(this::class)
-  }
+  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
+
+  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
 
   companion object {
-    inline fun <reified T> ContextAware.byType(): T =
-      MoanHolder.contextFor(this)?.byType<T>() ?: throw ContextBoundException(this::class)
-
-    inline fun <reified T> ContextAware.seqByType(): Sequence<T> =
-      MoanHolder.contextFor(this)?.seqByType() ?: throw ContextBoundException(this::class)
-
-    inline fun <reified T> ContextAware.byName(name: String): T =
-      MoanHolder.contextFor(this)?.byName<T>(name) ?: throw ContextBoundException(this::class)
+    inline fun <reified T> ContextAware.byType(): T = context.byType()
+    inline fun <reified T> ContextAware.seqByType(): Sequence<T> = context.seqByType()
+    inline fun <reified T> ContextAware.byName(name: String): T = context.byName<T>(name)
   }
 }

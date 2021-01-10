@@ -23,4 +23,4 @@ class MoanCreationException(name: String, cause: Throwable) : RuntimeException(n
 class MoanDestructionException(name: String) : RuntimeException(name)
 class ScopeDestructionException(name: String) : RuntimeException(name)
 class DuplicatedMoanException(name: String) : RuntimeException(name)
-class ContextBoundException(targetClass: KClass<*>) : RuntimeException(targetClass.qualifiedName)
+class ContextBoundException(targetClass: KClass<out ContextAware>) : RuntimeException(targetClass.qualifiedName)

@@ -17,7 +17,6 @@
  */
 package org.marid.moan
 
-import java.util.*
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.logging.Level
@@ -27,7 +26,7 @@ import kotlin.reflect.KType
 
 abstract class MoanHolder<T>(val name: String, val type: KType, protected val moanFactory: () -> T) : AutoCloseable {
 
-  protected val postConstructHooks = ConcurrentLinkedQueue<(T) -> Unit>()
+  internal val postConstructHooks = ConcurrentLinkedQueue<(T) -> Unit>()
   private val closeListeners = ConcurrentLinkedQueue<Runnable>()
 
   abstract val moan: T
@@ -53,26 +52,6 @@ abstract class MoanHolder<T>(val name: String, val type: KType, protected val mo
         }
       }
       true
-    }
-  }
-
-  companion object {
-
-    private val contextMap = WeakHashMap<Any, Context>()
-
-    internal fun <T> withContext(context: Context, f: () -> T): () -> T = {
-      val t = f()
-      synchronized(contextMap) {
-        contextMap[t] = context
-      }
-      t
-    }
-
-    fun contextFor(obj: ContextAware): Context? = synchronized(contextMap) { contextMap[obj] }
-
-    fun <T, H : MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
-      postConstructHooks.add(hook)
-      return this
     }
   }
 }
@@ -177,15 +156,6 @@ abstract class StatelessMoanHolder<T>(name: String, type: KType, f: () -> T) : M
 class SingletonMoanHolder<T>(name: String, type: KType, f: () -> T) : MemoizedMoanHolder<T>(name, type, f)
 class PrototypeMoanHolder<T>(name: String, type: KType, f: () -> T) : StatelessMoanHolder<T>(name, type, f)
 class ScopedMoanHolder<T>(name: String, type: KType, f: () -> T) : MemoizedMoanHolder<T>(name, type, f)
-
-class ContextSingletonMoanHolder<T>(name: String, type: KType, context: Context, f: () -> T) :
-  MemoizedMoanHolder<T>(name, type, withContext(context, f))
-
-class ContextPrototypeMoanHolder<T>(name: String, type: KType, context: Context, f: () -> T) :
-  StatelessMoanHolder<T>(name, type, withContext(context, f))
-
-class ContextScopedMoanHolder<T>(name: String, type: KType, context: Context, f: () -> T) :
-  MemoizedMoanHolder<T>(name, type, withContext(context, f))
 
 abstract class MoanHolderTypeResolver<T> {
   val type: KType

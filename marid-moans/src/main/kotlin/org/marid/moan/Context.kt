@@ -37,7 +37,7 @@ class Context(val name: String, val parent: Context? = null) {
   inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
     val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      ContextSingletonMoanHolder(name, t.type, this) { factory(this) }
+      SingletonMoanHolder(name, t.type) { withContext(this, factory(this)) }
     } else {
       SingletonMoanHolder(name, t.type) { factory(this) }
     }
@@ -48,7 +48,7 @@ class Context(val name: String, val parent: Context? = null) {
   inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): StatelessMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
     val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      ContextPrototypeMoanHolder(name, t.type, this) { factory(this) }
+      PrototypeMoanHolder(name, t.type) { withContext(this, factory(this)) }
     } else {
       PrototypeMoanHolder(name, t.type) { factory(this) }
     }
@@ -59,7 +59,7 @@ class Context(val name: String, val parent: Context? = null) {
   inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
     val t = object : MoanHolderTypeResolver<T>() {}
     val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      ContextScopedMoanHolder(name, t.type, this) { factory(this) }
+      ScopedMoanHolder(name, t.type) { withContext(this, factory(this)) }
     } else {
       ScopedMoanHolder(name, t.type) { factory(this) }
     }
@@ -136,4 +136,23 @@ class Context(val name: String, val parent: Context? = null) {
   }
 
   override fun toString(): String = "Context($name)"
+
+  companion object {
+
+    private val contextMap = WeakHashMap<Any, Context>()
+
+    fun <T> withContext(context: Context, t: T): T {
+      synchronized(contextMap) {
+        contextMap[t] = context
+      }
+      return t
+    }
+
+    fun contextFor(obj: ContextAware): Context? = synchronized(contextMap) { contextMap[obj] }
+
+    fun <T, H : MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
+      postConstructHooks.add(hook)
+      return this
+    }
+  }
 }
