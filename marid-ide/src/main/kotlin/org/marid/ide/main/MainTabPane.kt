@@ -17,10 +17,8 @@
  */
 package org.marid.ide.main
 
-import javafx.scene.layout.BorderPane
+import javafx.scene.control.Tab
+import javafx.scene.control.TabPane
 
-class MainPane(
-  mainTopPane: MainTopPane,
-  mainTabPane: MainTabPane
-) : BorderPane(mainTabPane, mainTopPane, null, null, null) {
+class MainTabPane : TabPane(Tab("zz")) {
 }

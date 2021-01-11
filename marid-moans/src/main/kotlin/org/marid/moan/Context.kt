@@ -161,8 +161,8 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  internal fun <T, H : MoanHolder<T>> register(holder: H, scope: Scope? = null) {
-    namedMap.compute(name) { n, old ->
+  fun <T, H : MoanHolder<T>> register(holder: H, scope: Scope? = null) {
+    namedMap.compute(holder.name) { n, old ->
       if (old == null) {
         if (scope != null && holder is ScopedMoanHolder<*>) {
           scope.add(holder)

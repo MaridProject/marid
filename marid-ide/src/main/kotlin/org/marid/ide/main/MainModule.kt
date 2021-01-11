@@ -24,6 +24,8 @@ class MainModule(context: Context) : ReflectionModule(context) {
 
   override val init: Context.() -> Unit
     get() = {
+      singleton(::MainTopPane)
+      singleton(::MainTabPane)
       singleton(::MainPane)
     }
 }

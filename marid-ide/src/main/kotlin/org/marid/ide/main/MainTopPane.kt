@@ -17,10 +17,7 @@
  */
 package org.marid.ide.main
 
-import javafx.scene.layout.BorderPane
+import javafx.scene.layout.VBox
 
-class MainPane(
-  mainTopPane: MainTopPane,
-  mainTabPane: MainTabPane
-) : BorderPane(mainTabPane, mainTopPane, null, null, null) {
+class MainTopPane : VBox() {
 }
