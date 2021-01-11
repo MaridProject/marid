@@ -63,6 +63,16 @@ abstract class ReflectionModule(context: Context) : Module(context) {
     context.register(h)
   }
 
+  fun singleton(callable: KCallable<*>, scope: Scope, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      ScopedMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      ScopedMoanHolder(context, name, type) { callable.callBy(args(callable)) }
+    }
+    context.register(h, scope)
+  }
+
   internal companion object {
     internal val KCallable<*>.safeName
       get() = when (name) {
