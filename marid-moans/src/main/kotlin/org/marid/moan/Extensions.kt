@@ -19,6 +19,19 @@
 
 package org.marid.moan
 
+import java.util.logging.Level
+import java.util.logging.LogRecord
 import java.util.logging.Logger
 
-internal val LOGGER = Logger.getLogger("moans")
+@Suppress("NOTHING_TO_INLINE")
+internal inline class LoggerWrapper(val logger: Logger) {
+  inline fun log(level: Level, message: String, thrown: Throwable? = null) {
+    val record = LogRecord(level, message)
+    record.loggerName = logger.name
+    record.sourceMethodName = null
+    record.thrown = thrown
+    logger.log(record)
+  }
+}
+
+internal inline val String.asLogger get() = LoggerWrapper(Logger.getLogger(this))

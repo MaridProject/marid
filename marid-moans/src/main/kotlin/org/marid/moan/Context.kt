@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
+import java.util.logging.Level.INFO
 import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
 import kotlin.reflect.KProperty
@@ -45,12 +46,15 @@ class Context private constructor(val name: String, val parent: Context?, closer
       closeListeners.addFirst { close() }
     }
     CLEANABLES.computeIfAbsent(uid) { uid ->
-      val name = this.name
+      val name = this.path
       val queue = this.queue
       val typedMap = this.typedMap
       val namedMap = this.namedMap
       val closeListeners = this.closeListeners
-      val closeTask = Runnable { close(uid, name, queue, typedMap, namedMap, closeListeners) }
+      val closeTask = Runnable {
+        name.asLogger.log(INFO, "Cleaning")
+        close(uid, name, queue, typedMap, namedMap, closeListeners)
+      }
       CLEANER.register(this, closer(closeTask))
     }
   }
@@ -168,7 +172,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
         when (val c = type.classifier) {
           is KClassifier -> typedMap.computeIfAbsent(c) { ConcurrentLinkedQueue<MoanHolder<*>>() } += holder
         }
-        LOGGER.info("$name: Registered $holder")
+        path.asLogger.log(INFO, "Registered $holder")
         holder
       } else {
         throw DuplicatedMoanException(n)
@@ -177,10 +181,11 @@ class Context private constructor(val name: String, val parent: Context?, closer
   }
 
   fun <M : Module> init(module: M): M {
+    val logger = path.asLogger
     try {
-      LOGGER.info("$name: Initializing module $module")
+      logger.log(INFO, "Initializing module $module")
       module.initialize()
-      LOGGER.info("$name: Initialized module $module")
+      logger.log(INFO, "Initialized module $module")
     } catch (e: Throwable) {
       try {
         close()
@@ -194,7 +199,9 @@ class Context private constructor(val name: String, val parent: Context?, closer
 
   override fun close() = close(uid, name, queue, typedMap, namedMap, closeListeners)
 
-  override fun toString(): String = "Context($name)"
+  val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
+
+  override fun toString(): String = path
 
   companion object {
 
@@ -249,12 +256,13 @@ class Context private constructor(val name: String, val parent: Context?, closer
         true
       }
       val it = queue.descendingIterator()
+      val logger = name.asLogger
       while (it.hasNext()) {
         val e = it.next()
         try {
-          LOGGER.info("$name: Closing moan ${e.name}")
+          logger.log(INFO, "Closing moan ${e.name}")
           e.close()
-          LOGGER.info("$name: Closed moan ${e.name}")
+          logger.log(INFO, "Closed moan ${e.name}")
         } catch (x: Throwable) {
           exception.addSuppressed(x)
         } finally {
