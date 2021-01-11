@@ -89,25 +89,64 @@ class Context private constructor(val name: String, val parent: Context?, closer
     return h
   }
 
-  inline fun <reified T> by(): T {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    return (byType(t.type).firstOrNull()?.moan as T?) ?: throw NoSuchElementException(t.toString())
-  }
-
-  inline fun <reified T> seq(): Seq<T> {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    val s = byType(t.type).map { it.moan as T }
-    return Seq { s.iterator() }
-  }
-
-  inline fun <reified T> by(name: String): T {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    return byName(name, t.type).moan as T
-  }
-
   @Suppress("UNCHECKED_CAST")
   operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
-    return byName(property.name, property.returnType).moan as T
+    return by(property.returnType, property.name) as T
+  }
+
+  fun by(type: KType, name: String?, optional: Boolean = false): MoanResult<Any?> {
+    if (type.classifier == Seq::class) {
+      val list = byType(type).toList()
+      return if (list.isEmpty()) {
+        if (optional) {
+          MoanResult(null, true)
+        } else {
+          if (type.isMarkedNullable) {
+            MoanResult(null)
+          } else {
+            MoanResult(Seq { emptySequence<Any?>().iterator() })
+          }
+        }
+      } else {
+        MoanResult(Seq { list.asSequence().map { it.moan }.iterator() })
+      }
+    } else {
+      fun elseBranch(): MoanResult<Any?> {
+        val list = byType(type).toList()
+        return when (list.size) {
+          0 -> {
+            if (optional) {
+              MoanResult(null, true)
+            } else {
+              if (type.isMarkedNullable) {
+                MoanResult(null)
+              } else {
+                throw NoSuchElementException("No moan of type $type for $name")
+              }
+            }
+          }
+          1 -> MoanResult(list[0].moan)
+          else ->
+            throw MultipleBindingException(
+              "Multiple moans of type $type for $name: ${list.map { it.name }}"
+            )
+        }
+      }
+      return if (name == null) {
+        elseBranch()
+      } else {
+        val h = try {
+          byName(name, type)
+        } catch (e: NoSuchElementException) {
+          null
+        }
+        if (h == null) {
+          elseBranch()
+        } else {
+          MoanResult(h.moan)
+        }
+      }
+    }
   }
 
   fun byType(type: KType): Sequence<MoanHolder<*>> {

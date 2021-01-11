@@ -21,9 +21,11 @@ import com.sun.javafx.css.StyleManager
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
-import javafx.scene.control.Button
 import javafx.stage.Stage
+import org.marid.ide.context.bind
+import org.marid.ide.context.fxContext
 import org.marid.ide.logging.logger
+import org.marid.ide.main.MainPane
 
 class App : Application() {
 
@@ -40,7 +42,10 @@ class App : Application() {
   }
 
   override fun start(primaryStage: Stage) {
-    val scene = Scene(Button("XXX"), 800.0, 600.0)
+    val context = fxContext("ide").bind(primaryStage)
+    val mainPane: MainPane by context
+    val scene = Scene(mainPane, 800.0, 600.0)
+    primaryStage.isMaximized = true
     primaryStage.scene = scene
     primaryStage.show()
   }

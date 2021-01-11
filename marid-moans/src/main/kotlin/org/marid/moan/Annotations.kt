@@ -17,11 +17,10 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KProperty
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+annotation class Singleton(val name: String = "")
 
-interface ContextAware {
-
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
-}
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+annotation class Prototype(val name: String = "")

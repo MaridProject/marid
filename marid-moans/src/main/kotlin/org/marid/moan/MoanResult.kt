@@ -17,11 +17,4 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KProperty
-
-interface ContextAware {
-
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
-}
+data class MoanResult<T>(val value: T?, val empty: Boolean = false)

@@ -15,13 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.moan
+package org.marid.ide.main
 
-import kotlin.reflect.KProperty
+import javafx.scene.layout.BorderPane
+import org.marid.moan.Singleton
 
-interface ContextAware {
-
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
+@Singleton
+class MainPane : BorderPane() {
 }

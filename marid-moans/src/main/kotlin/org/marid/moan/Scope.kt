@@ -76,7 +76,7 @@ class Scope(val name: String) : AutoCloseable {
     }
 
     internal fun cleanOnShutdown(threadName: String, m: MutableMap<BigInteger, Cleaner.Cleanable>) {
-      Runtime.getRuntime().addShutdownHook(thread(name = threadName) {
+      Runtime.getRuntime().addShutdownHook(thread(name = threadName, start = false) {
         val map = TreeMap(m)
         m.clear()
         map.descendingMap().entries.removeIf {

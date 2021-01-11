@@ -6,6 +6,9 @@ plugins {
 val openjfxVersion = "15.0.1"
 
 dependencies {
+  implementation(project(":marid-common"))
+  implementation(project(":marid-moans"))
+
   implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.0.1")
   implementation(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
 

@@ -17,7 +17,9 @@
  */
 package org.marid.moan
 
+import kotlin.reflect.KAnnotatedElement
 import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
@@ -29,53 +31,13 @@ abstract class ReflectionModule(context: Context) : Module(context) {
     val parameters = callable.parameters
     val args = mutableMapOf<KParameter, Any?>()
     for (p in parameters) {
-      val type = p.type
-      if (type.classifier == Seq::class) {
-        val list = context.byType(type).toList()
-        if (list.isEmpty()) {
-          if (!p.isOptional) {
-            if (type.isMarkedNullable) {
-              args[p] = null
-            } else {
-              args[p] = Seq { emptySequence<Any?>().iterator() }
-            }
-          }
-        } else {
-          args[p] = Seq { list.asSequence().map { it.moan }.iterator() }
-        }
-      } else {
-        val name = p.name
-        fun elseBranch() {
-          val list = context.byType(type).toList()
-          when (list.size) {
-            0 -> {
-              if (!p.isOptional) {
-                if (type.isMarkedNullable) {
-                  args[p] = null
-                } else {
-                  throw NoSuchElementException("No moan of type $type for param $p of $callable")
-                }
-              }
-            }
-            1 -> args[p] = list[0].moan
-            else ->
-              throw MultipleBindingException(
-                "Multiple moans of type $type for param $p of $callable: ${list.map { it.name }}"
-              )
-          }
-        }
-        if (name == null) {
-          elseBranch()
-        } else {
-          val h = try {
-            context.byName(name, type)
-          } catch (e: NoSuchElementException) {
-            null
-          }
-          if (h == null) {
-            elseBranch()
-          } else {
-            args[p] = h.moan
+      when (p.kind) {
+        KParameter.Kind.INSTANCE -> args[p] = this
+        KParameter.Kind.EXTENSION_RECEIVER -> throw IllegalStateException()
+        KParameter.Kind.VALUE -> {
+          val result = context.by(p.type, p.name, p.isOptional)
+          if (!result.empty) {
+            args[p] = result.value
           }
         }
       }
@@ -86,39 +48,41 @@ abstract class ReflectionModule(context: Context) : Module(context) {
   override val init: Context.() -> Unit
     get() = {
       for (callable in this::class.members) {
-        val singleton = callable.findAnnotation<Singleton>()
-        if (singleton != null) {
-          val name = singleton.name.takeIf { it.isNotBlank() } ?: callable.name
-          val type = callable.returnType
-          val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-            SingletonMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-          } else {
-            SingletonMoanHolder(name, type) { callable.callBy(args(callable)) }
-          }
-          context.register(h)
-          continue
-        }
-        val prototype = callable.findAnnotation<Prototype>()
-        if (prototype != null) {
-          val name = prototype.name.takeIf { it.isNotBlank() } ?: callable.name
-          val type = callable.returnType
-          val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-            PrototypeMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-          } else {
-            PrototypeMoanHolder(name, type) { callable.callBy(args(callable)) }
-          }
-          context.register(h)
-        }
+        init(callable, callable) { callable.name }
       }
     }
 
-  protected companion object {
-    @Retention(AnnotationRetention.RUNTIME)
-    @Target(AnnotationTarget.FUNCTION)
-    annotation class Singleton(val name: String = "")
+  fun init(vararg classes: KClass<*>) {
+    for (cl in classes) {
+      for (c in cl.constructors) {
+        init(c, cl) { cl.qualifiedName ?: cl.toString() }
+      }
+    }
+  }
 
-    @Retention(AnnotationRetention.RUNTIME)
-    @Target(AnnotationTarget.FUNCTION)
-    annotation class Prototype(val name: String = "")
+  private fun init(callable: KCallable<*>, annotatedElement: KAnnotatedElement, defaultName: () -> String) {
+    val singleton = annotatedElement.findAnnotation<Singleton>()
+    if (singleton != null) {
+      val name = singleton.name.takeIf { it.isNotBlank() } ?: defaultName()
+      val type = callable.returnType
+      val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+        SingletonMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+      } else {
+        SingletonMoanHolder(name, type) { callable.callBy(args(callable)) }
+      }
+      context.register(h)
+      return
+    }
+    val prototype = annotatedElement.findAnnotation<Prototype>()
+    if (prototype != null) {
+      val name = prototype.name.takeIf { it.isNotBlank() } ?: defaultName()
+      val type = callable.returnType
+      val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+        PrototypeMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+      } else {
+        PrototypeMoanHolder(name, type) { callable.callBy(args(callable)) }
+      }
+      context.register(h)
+    }
   }
 }

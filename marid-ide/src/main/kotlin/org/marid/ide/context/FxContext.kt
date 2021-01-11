@@ -15,13 +15,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.moan
+package org.marid.ide.context
 
-import kotlin.reflect.KProperty
+import javafx.application.Platform
+import javafx.event.EventType
+import javafx.stage.Window
+import javafx.stage.WindowEvent
+import org.marid.moan.Context
 
-interface ContextAware {
+fun fxContext(name: String): Context = Context(name, closer = { Runnable { Platform.runLater(it) } })
+fun fxContext(name: String, parent: Context) = Context(name, parent, closer = { Runnable { Platform.runLater(it) } })
 
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
+fun Context.bind(window: Window, eventType: EventType<WindowEvent> = WindowEvent.WINDOW_HIDDEN): Context {
+  window.properties["context"] = this
+  window.addEventHandler(eventType) {
+    window.properties.remove("context")
+    close()
+  }
+  return this
 }
