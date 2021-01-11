@@ -19,9 +19,9 @@ package org.marid.moan
 
 import java.lang.ref.Cleaner
 import java.math.BigInteger
-import java.math.BigInteger.TEN
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level.WARNING
 import java.util.logging.LogRecord
@@ -32,25 +32,23 @@ class Scope(val name: String) : AutoCloseable {
 
   private val moans = ConcurrentLinkedDeque<ScopedMoanHolder<*>>()
   private val uid = UIDS.getAndUpdate { it.inc() }
-  private val locks = generateSequence { Object() }.take(10).toList()
 
   internal fun add(holder: ScopedMoanHolder<*>) {
-    synchronized(locks[(uid % TEN).toInt()]) {
-      CLEANABLES.computeIfAbsent(uid) { uid ->
-        val moans = this.moans
-        val contextName = name
-        CLEANER.register(this) {
-          try {
-            close(contextName, moans)
-          } catch (e: Throwable) {
-            val record = LogRecord(WARNING, "Unable to close scope")
-            record.thrown = e
-            record.loggerName = "Scope"
-            record.sourceClassName = null
-            getLogger(record.loggerName).log(record)
-          } finally {
-            CLEANABLES.remove(uid)
-          }
+    CLEANABLES.computeIfAbsent(uid) { uid ->
+      val moans = this.moans
+      val contextName = name
+      CLEANER.register(this) {
+        try {
+          close(contextName, moans)
+        } catch (e: Throwable) {
+          val record = LogRecord(WARNING, "Unable to close scope")
+          record.thrown = e
+          record.loggerName = "Scope"
+          record.sourceClassName = javaClass.name
+          record.sourceMethodName = "add"
+          getLogger(record.loggerName).log(record)
+        } finally {
+          CLEANABLES.remove(uid)
         }
       }
     }
@@ -71,11 +69,17 @@ class Scope(val name: String) : AutoCloseable {
 
     private val UIDS = AtomicReference(BigInteger.ZERO)
     private val CLEANER = Cleaner.create()
-    private val CLEANABLES = ConcurrentSkipListMap<BigInteger, Cleaner.Cleanable>()
+    private val CLEANABLES = ConcurrentHashMap<BigInteger, Cleaner.Cleanable>(128, 0.5f)
 
     init {
-      Runtime.getRuntime().addShutdownHook(thread(name = "ScopeCleaner") {
-        CLEANABLES.descendingMap().entries.removeIf {
+      cleanOnShutdown("ScopeCleaner", CLEANABLES)
+    }
+
+    internal fun cleanOnShutdown(threadName: String, m: MutableMap<BigInteger, Cleaner.Cleanable>) {
+      Runtime.getRuntime().addShutdownHook(thread(name = threadName) {
+        val map = TreeMap(m)
+        m.clear()
+        map.descendingMap().entries.removeIf {
           val c = it.value
           try {
             c.clean()

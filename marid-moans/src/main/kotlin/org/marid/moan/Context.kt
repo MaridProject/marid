@@ -18,10 +18,12 @@
 package org.marid.moan
 
 import java.lang.ref.Cleaner
+import java.math.BigInteger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
 import kotlin.reflect.KProperty
@@ -37,19 +39,21 @@ class Context private constructor(val name: String, val parent: Context?, closer
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
   private val namedMap = ConcurrentHashMap<String, MoanHolder<*>>()
   private val closeListeners = ConcurrentLinkedDeque<() -> Unit>()
-  private val cleanRef: Cleaner.Cleanable
+  private val uid = UIDS.getAndUpdate { it.inc() }
 
   init {
     if (parent != null) {
       closeListeners.addFirst { close() }
     }
-    val name = this.name
-    val queue = this.queue
-    val typedMap = this.typedMap
-    val namedMap = this.namedMap
-    val closeListeners = this.closeListeners
-    val closeTask = Runnable { close(name, queue, typedMap, namedMap, closeListeners) }
-    cleanRef = CLEANER.register(this, closer(closeTask))
+    CLEANABLES.computeIfAbsent(uid) { uid ->
+      val name = this.name
+      val queue = this.queue
+      val typedMap = this.typedMap
+      val namedMap = this.namedMap
+      val closeListeners = this.closeListeners
+      val closeTask = Runnable { close(uid, name, queue, typedMap, namedMap, closeListeners) }
+      CLEANER.register(this, closer(closeTask))
+    }
   }
 
   inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
@@ -180,7 +184,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
     return module
   }
 
-  override fun close() = cleanRef.clean()
+  override fun close() = close(uid, name, queue, typedMap, namedMap, closeListeners)
 
   override fun toString(): String = "Context($name)"
 
@@ -188,6 +192,12 @@ class Context private constructor(val name: String, val parent: Context?, closer
 
     private val CONTEXT_MAP = WeakHashMap<Any, Context>()
     private val CLEANER = Cleaner.create()
+    private val UIDS = AtomicReference(BigInteger.ZERO)
+    private val CLEANABLES = ConcurrentHashMap<BigInteger, Cleaner.Cleanable>(128, 0.5f)
+
+    init {
+      Scope.cleanOnShutdown("ContextCleaner", CLEANABLES)
+    }
 
     operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
 
@@ -206,12 +216,14 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
 
     private fun close(
+      uid: BigInteger,
       name: String,
       queue: ConcurrentLinkedDeque<MoanHolder<*>>,
       typedMap: ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>,
       namedMap: ConcurrentHashMap<String, MoanHolder<*>>,
       closeListeners: ConcurrentLinkedDeque<() -> Unit>
     ) {
+      CLEANABLES.remove(uid)
       typedMap.clear()
       namedMap.clear()
       val exception = ContextCloseException(name)
