@@ -66,9 +66,9 @@ abstract class ReflectionModule(context: Context) : Module(context) {
       val name = singleton.name.takeIf { it.isNotBlank() } ?: defaultName()
       val type = callable.returnType
       val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-        SingletonMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+        SingletonMoanHolder(context.name, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
       } else {
-        SingletonMoanHolder(name, type) { callable.callBy(args(callable)) }
+        SingletonMoanHolder(context.name, name, type) { callable.callBy(args(callable)) }
       }
       context.register(h)
       return
@@ -78,9 +78,9 @@ abstract class ReflectionModule(context: Context) : Module(context) {
       val name = prototype.name.takeIf { it.isNotBlank() } ?: defaultName()
       val type = callable.returnType
       val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-        PrototypeMoanHolder(name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+        PrototypeMoanHolder(context.name, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
       } else {
-        PrototypeMoanHolder(name, type) { callable.callBy(args(callable)) }
+        PrototypeMoanHolder(context.name, name, type) { callable.callBy(args(callable)) }
       }
       context.register(h)
     }

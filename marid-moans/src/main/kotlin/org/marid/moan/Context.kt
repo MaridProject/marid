@@ -28,7 +28,6 @@ import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
-import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.isSubtypeOf
 
 typealias Closer = (Runnable) -> Runnable
@@ -56,42 +55,9 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  inline fun <reified T> singleton(name: String, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      SingletonMoanHolder(name, t.type) { withContext(this, factory(this)) }
-    } else {
-      SingletonMoanHolder(name, t.type) { factory(this) }
-    }
-    register(h)
-    return h
-  }
-
-  inline fun <reified T> prototype(name: String, noinline factory: Context.() -> T): StatelessMoanHolder<T> {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      PrototypeMoanHolder(name, t.type) { withContext(this, factory(this)) }
-    } else {
-      PrototypeMoanHolder(name, t.type) { factory(this) }
-    }
-    register(h)
-    return h
-  }
-
-  inline fun <reified T> scoped(name: String, scope: Scope, noinline factory: Context.() -> T): MemoizedMoanHolder<T> {
-    val t = object : MoanHolderTypeResolver<T>() {}
-    val h = if (T::class.isSubclassOf(ContextAware::class)) {
-      ScopedMoanHolder(name, t.type) { withContext(this, factory(this)) }
-    } else {
-      ScopedMoanHolder(name, t.type) { factory(this) }
-    }
-    register(h, scope)
-    return h
-  }
-
   @Suppress("UNCHECKED_CAST")
   operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
-    return by(property.returnType, property.name) as T
+    return by(property.returnType, property.name).value as T
   }
 
   fun by(type: KType, name: String?, optional: Boolean = false): MoanResult<Any?> {
@@ -191,7 +157,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  fun <T, H : MoanHolder<T>> register(holder: H, scope: Scope? = null) {
+  internal fun <T, H : MoanHolder<T>> register(holder: H, scope: Scope? = null) {
     namedMap.compute(name) { n, old ->
       if (old == null) {
         if (scope != null && holder is ScopedMoanHolder<*>) {
@@ -202,6 +168,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
         when (val c = type.classifier) {
           is KClassifier -> typedMap.computeIfAbsent(c) { ConcurrentLinkedQueue<MoanHolder<*>>() } += holder
         }
+        LOGGER.info("$name: Registered $holder")
         holder
       } else {
         throw DuplicatedMoanException(n)
@@ -209,9 +176,11 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  inline fun <reified M : Module> init(module: M): M {
+  fun <M : Module> init(module: M): M {
     try {
+      LOGGER.info("$name: Initializing module $module")
       module.initialize()
+      LOGGER.info("$name: Initialized module $module")
     } catch (e: Throwable) {
       try {
         close()
@@ -239,6 +208,11 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
 
     operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
+
+    fun <M : Module> Context.bind(module: (Context) -> M): M {
+      val m = module(this)
+      return init(m)
+    }
 
     fun <T> withContext(context: Context, t: T): T {
       synchronized(CONTEXT_MAP) {
@@ -278,7 +252,9 @@ class Context private constructor(val name: String, val parent: Context?, closer
       while (it.hasNext()) {
         val e = it.next()
         try {
+          LOGGER.info("$name: Closing moan ${e.name}")
           e.close()
+          LOGGER.info("$name: Closed moan ${e.name}")
         } catch (x: Throwable) {
           exception.addSuppressed(x)
         } finally {

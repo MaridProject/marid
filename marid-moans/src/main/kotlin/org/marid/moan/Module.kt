@@ -38,5 +38,5 @@ abstract class Module(val context: Context) {
     }
   }
 
-  override fun toString(): String = "${context.name}.${javaClass.name}"
+  override fun toString(): String = javaClass.name
 }

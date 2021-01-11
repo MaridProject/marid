@@ -15,22 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.ide.context
+@file:Suppress("EXPERIMENTAL_FEATURE_WARNING")
 
-import javafx.application.Platform
-import javafx.event.EventType
-import javafx.stage.Window
-import javafx.stage.WindowEvent
-import org.marid.moan.Context
+package org.marid.moan
 
-fun fxContext(name: String): Context = Context(name, closer = { Runnable { Platform.runLater(it) } })
-fun fxContext(name: String, parent: Context) = Context(name, parent, closer = { Runnable { Platform.runLater(it) } })
+import java.util.logging.Logger
 
-fun Context.link(window: Window, eventType: EventType<WindowEvent> = WindowEvent.WINDOW_HIDDEN): Context {
-  window.properties["context"] = this
-  window.addEventHandler(eventType) {
-    window.properties.remove("context")
-    close()
-  }
-  return this
-}
+internal val LOGGER = Logger.getLogger("moans")

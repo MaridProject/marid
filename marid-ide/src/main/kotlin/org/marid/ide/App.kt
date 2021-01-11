@@ -22,10 +22,12 @@ import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.stage.Stage
-import org.marid.ide.context.bind
 import org.marid.ide.context.fxContext
+import org.marid.ide.context.link
 import org.marid.ide.logging.logger
+import org.marid.ide.main.MainModule
 import org.marid.ide.main.MainPane
+import org.marid.moan.Context.Companion.bind
 
 class App : Application() {
 
@@ -42,7 +44,8 @@ class App : Application() {
   }
 
   override fun start(primaryStage: Stage) {
-    val context = fxContext("ide").bind(primaryStage)
+    val context = fxContext("ide").link(primaryStage)
+    context.bind(::MainModule)
     val mainPane: MainPane by context
     val scene = Scene(mainPane, 800.0, 600.0)
     primaryStage.isMaximized = true
