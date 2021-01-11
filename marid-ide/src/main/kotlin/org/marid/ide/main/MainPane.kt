@@ -18,8 +18,6 @@
 package org.marid.ide.main
 
 import javafx.scene.layout.BorderPane
-import org.marid.moan.Singleton
 
-@Singleton
 class MainPane : BorderPane() {
 }

@@ -22,8 +22,8 @@ import org.marid.moan.ReflectionModule
 
 class MainModule(context: Context) : ReflectionModule(context) {
 
-  override val postInit: Context.() -> Unit
+  override val init: Context.() -> Unit
     get() = {
-      init(MainPane::class)
+      singleton(::MainPane)
     }
 }

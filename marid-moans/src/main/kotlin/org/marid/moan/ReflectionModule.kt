@@ -17,12 +17,10 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KAnnotatedElement
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.createType
-import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSupertypeOf
 
 abstract class ReflectionModule(context: Context) : Module(context) {
@@ -45,44 +43,35 @@ abstract class ReflectionModule(context: Context) : Module(context) {
     return args
   }
 
-  override val init: Context.() -> Unit
-    get() = {
-      for (callable in this::class.members) {
-        init(callable, callable) { callable.name }
-      }
+  fun singleton(callable: KCallable<*>, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      SingletonMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      SingletonMoanHolder(context, name, type) { callable.callBy(args(callable)) }
     }
-
-  fun init(vararg classes: KClass<*>) {
-    for (cl in classes) {
-      for (c in cl.constructors) {
-        init(c, cl) { cl.qualifiedName ?: cl.toString() }
-      }
-    }
+    context.register(h)
   }
 
-  private fun init(callable: KCallable<*>, annotatedElement: KAnnotatedElement, defaultName: () -> String) {
-    val singleton = annotatedElement.findAnnotation<Singleton>()
-    if (singleton != null) {
-      val name = singleton.name.takeIf { it.isNotBlank() } ?: defaultName()
-      val type = callable.returnType
-      val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-        SingletonMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-      } else {
-        SingletonMoanHolder(context, name, type) { callable.callBy(args(callable)) }
-      }
-      context.register(h)
-      return
+  fun prototype(callable: KCallable<*>, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      PrototypeMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      PrototypeMoanHolder(context, name, type) { callable.callBy(args(callable)) }
     }
-    val prototype = annotatedElement.findAnnotation<Prototype>()
-    if (prototype != null) {
-      val name = prototype.name.takeIf { it.isNotBlank() } ?: defaultName()
-      val type = callable.returnType
-      val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
-        PrototypeMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
-      } else {
-        PrototypeMoanHolder(context, name, type) { callable.callBy(args(callable)) }
+    context.register(h)
+  }
+
+  internal companion object {
+    internal val KCallable<*>.safeName
+      get() = when (name) {
+        "<init>" ->
+          when (val c = returnType.classifier) {
+            is KClass<*> -> c.java.name
+            else -> name
+          }
+        else -> name
       }
-      context.register(h)
-    }
   }
 }
