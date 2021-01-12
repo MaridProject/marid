@@ -18,9 +18,9 @@
 package org.marid.ide.main
 
 import org.marid.moan.Context
-import org.marid.moan.ReflectionModule
+import org.marid.moan.Module
 
-class MainModule(context: Context) : ReflectionModule(context) {
+class MainModule(context: Context) : Module(context) {
 
   override val init: Context.() -> Unit
     get() = {

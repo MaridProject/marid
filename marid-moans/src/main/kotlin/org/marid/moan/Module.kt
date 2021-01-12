@@ -17,6 +17,12 @@
  */
 package org.marid.moan
 
+import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSupertypeOf
+
 abstract class Module(val context: Context) {
 
   inline fun <reified M : Module> init(module: M): M {
@@ -38,5 +44,65 @@ abstract class Module(val context: Context) {
     }
   }
 
+  private fun args(callable: KCallable<*>): Map<KParameter, Any?> {
+    val parameters = callable.parameters
+    val args = mutableMapOf<KParameter, Any?>()
+    for (p in parameters) {
+      when (p.kind) {
+        KParameter.Kind.INSTANCE -> args[p] = this
+        KParameter.Kind.EXTENSION_RECEIVER -> throw IllegalStateException()
+        KParameter.Kind.VALUE -> {
+          val result = context.by(p.type, p.name, p.isOptional)
+          if (!result.empty) {
+            args[p] = result.value
+          }
+        }
+      }
+    }
+    return args
+  }
+
+  fun singleton(callable: KCallable<*>, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      SingletonMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      SingletonMoanHolder(context, name, type) { callable.callBy(args(callable)) }
+    }
+    context.register(h)
+  }
+
+  fun prototype(callable: KCallable<*>, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      PrototypeMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      PrototypeMoanHolder(context, name, type) { callable.callBy(args(callable)) }
+    }
+    context.register(h)
+  }
+
+  fun singleton(callable: KCallable<*>, scope: Scope, name: String = callable.safeName) {
+    val type = callable.returnType
+    val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
+      ScopedMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
+    } else {
+      ScopedMoanHolder(context, name, type) { callable.callBy(args(callable)) }
+    }
+    context.register(h, scope)
+  }
+
   override fun toString(): String = javaClass.name
+
+  internal companion object {
+    internal val KCallable<*>.safeName
+      get() = when (name) {
+        "<init>" ->
+          when (val c = returnType.classifier) {
+            is KClass<*> -> c.java.name
+            else -> name
+          }
+        else -> name
+      }
+  }
 }
