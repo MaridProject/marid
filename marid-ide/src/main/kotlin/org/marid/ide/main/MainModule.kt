@@ -22,10 +22,9 @@ import org.marid.moan.Module
 
 class MainModule(context: Context) : Module(context) {
 
-  override val init: Context.() -> Unit
-    get() = {
-      singleton(::MainTopPane)
-      singleton(::MainTabPane)
-      singleton(::MainPane)
-    }
+  override fun init() {
+    singleton(::MainTopPane)
+    singleton(::MainTabPane)
+    singleton(::MainPane)
+  }
 }

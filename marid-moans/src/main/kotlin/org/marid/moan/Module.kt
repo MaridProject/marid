@@ -17,6 +17,7 @@
  */
 package org.marid.moan
 
+import java.util.logging.Level
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
@@ -25,20 +26,19 @@ import kotlin.reflect.full.isSupertypeOf
 
 abstract class Module(val context: Context) {
 
-  inline fun <reified M : Module> init(module: M): M {
-    module.initialize()
-    return module
-  }
+  open fun dependsOn(): List<Module> = listOf()
 
-  open val preInit: Context.() -> Unit = {}
-  abstract val init: Context.() -> Unit
-  open val postInit: Context.() -> Unit = {}
+  abstract fun init()
 
   fun initialize() {
+    val logger = context.path.asLogger
     try {
-      preInit(context)
-      init(context)
-      postInit(context)
+      logger.log(Level.INFO, "Initializing $this")
+      for (dep in dependsOn()) {
+        dep.initialize()
+      }
+      init()
+      logger.log(Level.INFO, "Initialized $this")
     } catch (e: Throwable) {
       throw ModuleInitializationException(toString(), e)
     }

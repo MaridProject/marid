@@ -195,11 +195,8 @@ class Context private constructor(val name: String, val parent: Context?, closer
   }
 
   fun <M : Module> init(module: M): M {
-    val logger = path.asLogger
     try {
-      logger.log(INFO, "Initializing module $module")
       module.initialize()
-      logger.log(INFO, "Initialized module $module")
     } catch (e: Throwable) {
       try {
         close()
