@@ -27,7 +27,6 @@ import org.marid.ide.context.link
 import org.marid.ide.logging.logger
 import org.marid.ide.main.MainModule
 import org.marid.ide.main.MainPane
-import org.marid.moan.Context.Companion.bind
 
 class App : Application() {
 
@@ -44,8 +43,9 @@ class App : Application() {
   }
 
   override fun start(primaryStage: Stage) {
-    val context = fxContext("ide").link(primaryStage)
-    context.bind(::MainModule)
+    val context = fxContext("ide")
+      .link(primaryStage)
+      .init(::MainModule)
     val mainPane: MainPane by context
     val scene = Scene(mainPane, 800.0, 600.0)
     primaryStage.isMaximized = true

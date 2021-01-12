@@ -194,9 +194,11 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  fun <M : Module> init(module: M): M {
+  fun init(moduleFactory: (Context) -> Module, dependencyMapper: DependencyMapper = { sequenceOf(it) }): Context {
     try {
-      module.initialize()
+      val module = moduleFactory(this)
+      module.initialize(dependencyMapper)
+      return this
     } catch (e: Throwable) {
       try {
         close()
@@ -205,7 +207,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
       }
       throw e
     }
-    return module
   }
 
   override fun close() = close(uid, name, queue, typedMap, namedMap, closeListeners)
@@ -226,11 +227,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
 
     operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
-
-    fun <M : Module> Context.bind(module: (Context) -> M): M {
-      val m = module(this)
-      return init(m)
-    }
 
     fun <T> withContext(context: Context, t: T): T {
       synchronized(CONTEXT_MAP) {

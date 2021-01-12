@@ -35,3 +35,5 @@ internal inline class LoggerWrapper(val logger: Logger) {
 }
 
 internal inline val String.asLogger get() = LoggerWrapper(Logger.getLogger(this))
+
+typealias DependencyMapper = (Module) -> Sequence<Module>

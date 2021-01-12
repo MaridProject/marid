@@ -26,16 +26,16 @@ import kotlin.reflect.full.isSupertypeOf
 
 abstract class Module(val context: Context) {
 
-  open fun dependsOn(): List<Module> = listOf()
+  open fun dependsOn(): Sequence<Module> = emptySequence()
 
   abstract fun init()
 
-  fun initialize() {
+  internal fun initialize(dependencyMapper: DependencyMapper) {
     val logger = context.path.asLogger
     try {
       logger.log(Level.INFO, "Initializing $this")
-      for (dep in dependsOn()) {
-        dep.initialize()
+      for (dep in dependsOn().flatMap(dependencyMapper)) {
+        dep.initialize(dependencyMapper)
       }
       init()
       logger.log(Level.INFO, "Initialized $this")
