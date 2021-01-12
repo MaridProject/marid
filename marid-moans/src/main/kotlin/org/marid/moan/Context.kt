@@ -251,8 +251,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
       closeListeners: ConcurrentLinkedDeque<() -> Unit>
     ) {
       CLEANABLES.remove(uid)
-      typedMap.clear()
-      namedMap.clear()
       val exception = ContextCloseException(name)
       closeListeners.removeIf {
         try {
@@ -269,12 +267,27 @@ class Context private constructor(val name: String, val parent: Context?, closer
         try {
           logger.log(INFO, "Closing moan ${e.name}")
           e.close()
+          namedMap.remove(e.name)
+          val classifier = e.type.classifier
+          if (classifier != null) {
+            typedMap.computeIfPresent(classifier) { _, old ->
+              old.removeIf { it === e }
+              if (old.isEmpty()) null else old
+            }
+          }
           logger.log(INFO, "Closed moan ${e.name}")
         } catch (x: Throwable) {
           exception.addSuppressed(x)
         } finally {
           it.remove()
         }
+      }
+      try {
+        check(queue.isEmpty()) { "queue is not empty" }
+        check(typedMap.isEmpty()) { "typedMap is not empty" }
+        check(namedMap.isEmpty()) { "namedMap is not empty" }
+      } catch (e: Throwable) {
+        exception.addSuppressed(e)
       }
       if (exception.suppressed.isNotEmpty()) {
         throw exception
