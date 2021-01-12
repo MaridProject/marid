@@ -267,6 +267,10 @@ class Context private constructor(val name: String, val parent: Context?, closer
         try {
           logger.log(INFO, "Closing moan ${e.name}")
           e.close()
+          logger.log(INFO, "Closed moan ${e.name}")
+        } catch (x: Throwable) {
+          exception.addSuppressed(x)
+        } finally {
           namedMap.remove(e.name)
           val classifier = e.type.classifier
           if (classifier != null) {
@@ -275,10 +279,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
               if (old.isEmpty()) null else old
             }
           }
-          logger.log(INFO, "Closed moan ${e.name}")
-        } catch (x: Throwable) {
-          exception.addSuppressed(x)
-        } finally {
           it.remove()
         }
       }
