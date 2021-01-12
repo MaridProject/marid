@@ -165,7 +165,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
     namedMap.compute(holder.name) { n, old ->
       if (old == null) {
         if (scope != null && holder is ScopedMoanHolder<*>) {
-          scope.add(holder)
+          scope.add(holder, this)
         }
         queue += holder
         val type = holder.type
@@ -177,6 +177,20 @@ class Context private constructor(val name: String, val parent: Context?, closer
       } else {
         throw DuplicatedMoanException(n)
       }
+    }
+  }
+
+  fun unregister(name: String) {
+    namedMap.computeIfPresent(name) { _, old ->
+      queue.removeIf { it === old }
+      val classifier = old.type.classifier
+      if (classifier != null) {
+        typedMap.computeIfPresent(classifier) { _, oldList ->
+          oldList.removeIf { it === old }
+          if (oldList.isEmpty()) null else oldList
+        }
+      }
+      null
     }
   }
 

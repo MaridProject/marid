@@ -18,6 +18,7 @@
 package org.marid.moan
 
 import java.lang.ref.Cleaner
+import java.lang.ref.WeakReference
 import java.math.BigInteger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -28,12 +29,14 @@ import java.util.logging.LogRecord
 import java.util.logging.Logger.getLogger
 import kotlin.concurrent.thread
 
+typealias MoanEntry = Pair<ScopedMoanHolder<*>, WeakReference<Context>>
+
 class Scope(val name: String) : AutoCloseable {
 
-  private val moans = ConcurrentLinkedDeque<ScopedMoanHolder<*>>()
+  private val moans = ConcurrentLinkedDeque<MoanEntry>()
   private val uid = UIDS.getAndUpdate { it.inc() }
 
-  internal fun add(holder: ScopedMoanHolder<*>) {
+  internal fun add(holder: ScopedMoanHolder<*>, context: Context) {
     CLEANABLES.computeIfAbsent(uid) { uid ->
       val moans = this.moans
       val contextName = name
@@ -52,7 +55,7 @@ class Scope(val name: String) : AutoCloseable {
         }
       }
     }
-    moans += holder
+    moans += Pair(holder, WeakReference(context))
   }
 
   override fun close() {
@@ -91,14 +94,15 @@ class Scope(val name: String) : AutoCloseable {
       })
     }
 
-    private fun close(name: String, moans: ConcurrentLinkedDeque<ScopedMoanHolder<*>>) {
+    private fun close(name: String, moans: ConcurrentLinkedDeque<MoanEntry>) {
       val ex = ScopeDestructionException(name)
-      moans.removeIf { moan ->
+      moans.removeIf { (moan, contextRef) ->
         try {
           moan.close()
         } catch (x: Throwable) {
           ex.addSuppressed(x)
         }
+        contextRef.get()?.unregister(moan.name)
         true
       }
       if (ex.suppressed.isNotEmpty()) {
