@@ -55,7 +55,9 @@ class Context private constructor(val name: String, val parent: Context?, closer
       })
     }
     if (parent != null) {
+      val uid = this.uid
       val listener = { closeTask(uid).run() }
+      val parent = this.parent
       parent.addCloseListener(listener)
       addCloseListener { parent.removeCloseListener(listener) }
     }
