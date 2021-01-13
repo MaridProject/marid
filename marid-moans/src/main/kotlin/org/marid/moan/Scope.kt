@@ -18,49 +18,60 @@
 package org.marid.moan
 
 import java.lang.ref.Cleaner
-import java.lang.ref.WeakReference
 import java.math.BigInteger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level.WARNING
 import java.util.logging.LogRecord
 import java.util.logging.Logger.getLogger
 import kotlin.concurrent.thread
 
-typealias MoanEntry = Pair<ScopedMoanHolder<*>, WeakReference<Context>>
+private typealias Moans = ConcurrentLinkedDeque<ScopedMoanHolder<*>>
+private typealias Contexts = CopyOnWriteArraySet<Context>
 
 class Scope(val name: String) : AutoCloseable {
 
-  private val moans = ConcurrentLinkedDeque<MoanEntry>()
+  private val moans = Moans()
   private val uid = UIDS.getAndUpdate { it.inc() }
+  private val contexts = Contexts()
 
   internal fun add(holder: ScopedMoanHolder<*>, context: Context) {
-    CLEANABLES.computeIfAbsent(uid) { uid ->
-      val moans = this.moans
-      val contextName = name
-      CLEANER.register(this) {
-        try {
-          close(contextName, moans)
-        } catch (e: Throwable) {
-          val record = LogRecord(WARNING, "Unable to close scope")
-          record.thrown = e
-          record.loggerName = "Scope"
-          record.sourceClassName = javaClass.name
-          record.sourceMethodName = "add"
-          getLogger(record.loggerName).log(record)
-        } finally {
-          CLEANABLES.remove(uid)
-        }
+    val moans = this.moans
+    val contextName = name
+    val contexts = this.contexts
+    val cleanTask = { uid: BigInteger ->
+      try {
+        close(contextName, moans, contexts)
+      } catch (e: Throwable) {
+        val record = LogRecord(WARNING, "Unable to close scope")
+        record.thrown = e
+        record.loggerName = "Scope"
+        record.sourceClassName = javaClass.name
+        record.sourceMethodName = "add"
+        getLogger(record.loggerName).log(record)
+      } finally {
+        CLEANABLES.remove(uid)
       }
     }
-    moans += Pair(holder, WeakReference(context))
+    CLEANABLES.computeIfAbsent(uid) { uid -> CLEANER.register(this) { cleanTask(uid) } }
+    moans += holder
+    if (contexts.add(context)) {
+      val uid = this.uid
+      context.addCloseListener(object : () -> Unit {
+        override fun invoke() {
+          context.removeCloseListener(this)
+          cleanTask(uid)
+        }
+      })
+    }
   }
 
   override fun close() {
     try {
-      close(name, moans)
+      close(name, moans, contexts)
     } finally {
       CLEANABLES.remove(uid)
     }
@@ -94,17 +105,18 @@ class Scope(val name: String) : AutoCloseable {
       })
     }
 
-    private fun close(name: String, moans: ConcurrentLinkedDeque<MoanEntry>) {
+    private fun close(name: String, moans: Moans, contexts: Contexts) {
       val ex = ScopeDestructionException(name)
-      moans.removeIf { (moan, contextRef) ->
+      moans.removeIf { moan ->
         try {
           moan.close()
         } catch (x: Throwable) {
           ex.addSuppressed(x)
         }
-        contextRef.get()?.unregister(moan.name)
+        contexts.forEach { it.unregister(moan) }
         true
       }
+      contexts.clear()
       if (ex.suppressed.isNotEmpty()) {
         throw ex
       }

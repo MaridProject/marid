@@ -189,6 +189,24 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
+  fun unregister(holder: MoanHolder<*>) {
+    namedMap.computeIfPresent(holder.name) { _, old ->
+      if (old === holder) {
+        queue.removeIf { it === old }
+        val classifier = old.type.classifier
+        if (classifier != null) {
+          typedMap.computeIfPresent(classifier) { _, oldList ->
+            oldList.removeIf { it === old }
+            if (oldList.isEmpty()) null else oldList
+          }
+        }
+        null
+      } else {
+        old
+      }
+    }
+  }
+
   fun init(moduleFactory: (Context) -> Module, dependencyMapper: DependencyMapper = { sequenceOf(it) }): Context {
     try {
       val module = moduleFactory(this)
