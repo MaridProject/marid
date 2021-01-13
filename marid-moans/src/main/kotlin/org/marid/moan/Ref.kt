@@ -17,12 +17,18 @@
  */
 package org.marid.moan
 
-fun interface Seq<T> {
-  fun iterator(): Iterator<T>
-  val isEmpty: Boolean get() = iterator().hasNext()
-  val isNotEmpty: Boolean get() = !isEmpty
+import java.lang.ref.WeakReference
+import kotlin.reflect.KType
 
-  companion object {
-    operator fun <T> invoke(seq: Sequence<T>): Seq<T> = Seq { seq.iterator() }
+class Ref<T>(context: Context, val type: KType, val name: String?) {
+
+  private val contextRef = WeakReference(context)
+
+  @Suppress("UNCHECKED_CAST")
+  operator fun invoke(): T? {
+    return when (val c = contextRef.get()) {
+      is Context -> c.by(type, name, false).value as T?
+      else -> if (type.isMarkedNullable) null else throw NoSuchElementException("No moan $name of $type")
+    }
   }
 }

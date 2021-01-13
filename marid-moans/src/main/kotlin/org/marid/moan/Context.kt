@@ -27,13 +27,12 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level.INFO
 import kotlin.NoSuchElementException
 import kotlin.reflect.KClassifier
-import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 
 typealias Closer = (Runnable) -> Runnable
 
-class Context private constructor(val name: String, val parent: Context?, closer: Closer) : AutoCloseable {
+class Context private constructor(val name: String, val parent: Context?, closer: Closer) : MoanFetcher, AutoCloseable {
 
   private val queue = ConcurrentLinkedDeque<MoanHolder<*>>()
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
@@ -41,85 +40,79 @@ class Context private constructor(val name: String, val parent: Context?, closer
   private val closeListeners = ConcurrentLinkedDeque<() -> Unit>()
   private val uid = UIDS.getAndUpdate { it.inc() }
 
+  val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
+
   init {
-    if (parent != null) {
-      closeListeners.addFirst { close() }
-    }
-    CLEANABLES.computeIfAbsent(uid) { uid ->
-      val name = this.path
-      val queue = this.queue
-      val typedMap = this.typedMap
-      val namedMap = this.namedMap
-      val closeListeners = this.closeListeners
-      val closeTask = Runnable {
+    val name = this.path
+    val queue = this.queue
+    val typedMap = this.typedMap
+    val namedMap = this.namedMap
+    val closeListeners = this.closeListeners
+    val closeTask = { uid: BigInteger ->
+      closer(Runnable {
         name.asLogger.log(INFO, "Cleaning")
         close(uid, name, queue, typedMap, namedMap, closeListeners)
-      }
-      CLEANER.register(this, closer(closeTask))
+      })
     }
+    if (parent != null) {
+      val listener = { closeTask(uid).run() }
+      parent.addCloseListener(listener)
+      addCloseListener { parent.removeCloseListener(listener) }
+    }
+    CLEANABLES.computeIfAbsent(uid) { uid -> CLEANER.register(this, closeTask(uid)) }
   }
 
-  @Suppress("UNCHECKED_CAST")
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
-    return by(property.returnType, property.name).value as T
+  fun addCloseListener(listener: () -> Unit) {
+    closeListeners.addFirst(listener)
   }
 
-  fun by(type: KType, name: String?, optional: Boolean = false): MoanResult<Any?> {
-    if (type.classifier == Seq::class) {
-      val list = byType(type).toList()
-      return if (list.isEmpty()) {
-        if (optional) {
-          MoanResult(null, true)
-        } else {
-          if (type.isMarkedNullable) {
-            MoanResult(null)
-          } else {
-            MoanResult(Seq { emptySequence<Any?>().iterator() })
-          }
-        }
-      } else {
-        MoanResult(Seq { list.asSequence().map { it.moan }.iterator() })
-      }
-    } else {
-      fun elseBranch(): MoanResult<Any?> {
+  fun removeCloseListener(listener: () -> Unit) {
+    closeListeners.removeIf { it === listener }
+  }
+
+  override fun by(type: KType, name: String?, optional: Boolean): MoanResult<Any?> {
+    return when (type.classifier) {
+      Seq::class -> {
         val list = byType(type).toList()
-        return when (list.size) {
-          0 -> {
-            if (optional) {
-              MoanResult(null, true)
-            } else {
-              if (type.isMarkedNullable) {
-                MoanResult(null)
-              } else {
-                throw NoSuchElementException("No moan of type $type for $name")
-              }
-            }
+        if (list.isEmpty()) {
+          when {
+            optional -> MoanResult(null, true)
+            type.isMarkedNullable -> MoanResult(null)
+            else -> MoanResult(Seq(emptySequence<Any?>()))
           }
-          1 -> MoanResult(list[0].moan)
-          else ->
-            throw MultipleBindingException(
-              "Multiple moans of type $type for $name: ${list.map { it.name }}"
-            )
+        } else {
+          MoanResult(Seq(list.asSequence().map { it.moan }))
         }
       }
-      return if (name == null) {
-        elseBranch()
-      } else {
-        val h = try {
-          byName(name, type)
-        } catch (e: NoSuchElementException) {
-          null
-        }
-        if (h == null) {
-          elseBranch()
+      Ref::class -> by(type.arguments.first().type!!, name, optional)
+      else -> {
+        if (name == null) {
+          by0(type, name, optional)
         } else {
-          MoanResult(h.moan)
+          try {
+            MoanResult(byName(name, type).moan)
+          } catch (e: NoSuchElementException) {
+            by0(type, name, optional)
+          }
         }
       }
     }
   }
 
-  fun byType(type: KType): Sequence<MoanHolder<*>> {
+  private fun by0(type: KType, name: String?, optional: Boolean): MoanResult<Any?> {
+    val list = byType(type).toList()
+    return when (list.size) {
+      0 -> when {
+        optional -> MoanResult(null, true)
+        type.isMarkedNullable -> MoanResult(null)
+        else -> throw NoSuchElementException("No moan of type $type for $name")
+      }
+      1 -> MoanResult(list[0].moan)
+      else -> throw MultipleBindingException("Multiple moans of type $type for $name: ${list.map { it.name }}")
+    }
+  }
+
+  private fun byType(type: KType): Sequence<MoanHolder<*>> {
     val c = when (val c = type.classifier) {
       is KClassifier -> typedMap[c]?.let(Collection<MoanHolder<*>>::asSequence) ?: emptySequence()
       else -> queue.asSequence().filter { it.type.isSubtypeOf(type) }
@@ -130,7 +123,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  fun byName(name: String, type: KType): MoanHolder<*> {
+  private fun byName(name: String, type: KType): MoanHolder<*> {
     return when (val m = namedMap[name]) {
       null ->
         when (parent) {
@@ -210,8 +203,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
   }
 
   override fun close() = close(uid, name, queue, typedMap, namedMap, closeListeners)
-
-  val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
 
   override fun toString(): String = path
 

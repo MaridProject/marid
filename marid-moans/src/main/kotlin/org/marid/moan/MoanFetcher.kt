@@ -17,12 +17,15 @@
  */
 package org.marid.moan
 
-fun interface Seq<T> {
-  fun iterator(): Iterator<T>
-  val isEmpty: Boolean get() = iterator().hasNext()
-  val isNotEmpty: Boolean get() = !isEmpty
+import kotlin.reflect.KProperty
+import kotlin.reflect.KType
 
-  companion object {
-    operator fun <T> invoke(seq: Sequence<T>): Seq<T> = Seq { seq.iterator() }
+interface MoanFetcher {
+
+  @Suppress("UNCHECKED_CAST")
+  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
+    return by(property.returnType, property.name, false).value as T
   }
+
+  fun by(type: KType, name: String?, optional: Boolean): MoanResult<Any?>
 }
