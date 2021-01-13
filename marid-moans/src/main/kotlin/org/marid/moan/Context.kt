@@ -175,36 +175,24 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  fun unregister(name: String) {
-    namedMap.computeIfPresent(name) { _, old ->
-      queue.removeIf { it === old }
-      val classifier = old.type.classifier
-      if (classifier != null) {
-        typedMap.computeIfPresent(classifier) { _, oldList ->
-          oldList.removeIf { it === old }
-          if (oldList.isEmpty()) null else oldList
-        }
+  private fun unregister0(old: MoanHolder<*>): MoanHolder<*>? {
+    queue.removeIf { it === old }
+    val classifier = old.type.classifier
+    if (classifier != null) {
+      typedMap.computeIfPresent(classifier) { _, oldList ->
+        oldList.removeIf { it === old }
+        if (oldList.isEmpty()) null else oldList
       }
-      null
     }
+    return null
+  }
+
+  fun unregister(name: String) {
+    namedMap.computeIfPresent(name) { _, old -> unregister0(old) }
   }
 
   fun unregister(holder: MoanHolder<*>) {
-    namedMap.computeIfPresent(holder.name) { _, old ->
-      if (old === holder) {
-        queue.removeIf { it === old }
-        val classifier = old.type.classifier
-        if (classifier != null) {
-          typedMap.computeIfPresent(classifier) { _, oldList ->
-            oldList.removeIf { it === old }
-            if (oldList.isEmpty()) null else oldList
-          }
-        }
-        null
-      } else {
-        old
-      }
-    }
+    namedMap.computeIfPresent(holder.name) { _, old -> if (old === holder) unregister0(old) else old }
   }
 
   fun init(moduleFactory: (Context) -> Module, dependencyMapper: DependencyMapper = { sequenceOf(it) }): Context {
