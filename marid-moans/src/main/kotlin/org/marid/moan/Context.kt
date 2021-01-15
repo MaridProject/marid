@@ -26,7 +26,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level.INFO
 import kotlin.NoSuchElementException
+import kotlin.reflect.KCallable
 import kotlin.reflect.KClassifier
+import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 
@@ -216,7 +218,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
 
   companion object {
 
-    private val CONTEXT_MAP = WeakHashMap<Any, Context>()
     private val CLEANER = Cleaner.create()
     private val UIDS = AtomicReference(BigInteger.ZERO)
     private val CLEANABLES = ConcurrentHashMap<BigInteger, Cleaner.Cleanable>(128, 0.5f)
@@ -226,15 +227,6 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
 
     operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
-
-    fun <T> withContext(context: Context, t: T): T {
-      synchronized(CONTEXT_MAP) {
-        CONTEXT_MAP[t] = context
-      }
-      return t
-    }
-
-    fun contextFor(obj: ContextAware): Context? = synchronized(CONTEXT_MAP) { CONTEXT_MAP[obj] }
 
     fun <T, H : MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
       postConstructHooks.add(hook)
@@ -291,6 +283,24 @@ class Context private constructor(val name: String, val parent: Context?, closer
       if (exception.suppressed.isNotEmpty()) {
         throw exception
       }
+    }
+
+    internal fun Context.args(callable: KCallable<*>): Map<KParameter, Any?> {
+      val parameters = callable.parameters
+      val args = mutableMapOf<KParameter, Any?>()
+      for (p in parameters) {
+        when (p.kind) {
+          KParameter.Kind.INSTANCE -> args[p] = this
+          KParameter.Kind.EXTENSION_RECEIVER -> throw IllegalStateException()
+          KParameter.Kind.VALUE -> {
+            val result = by(p.type, p.name, p.isOptional)
+            if (!result.empty) {
+              args[p] = result.value
+            }
+          }
+        }
+      }
+      return args
     }
   }
 }

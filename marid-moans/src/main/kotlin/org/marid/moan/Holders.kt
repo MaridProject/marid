@@ -17,19 +17,21 @@
  */
 package org.marid.moan
 
+import org.marid.moan.Context.Companion.args
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.logging.Level.INFO
 import kotlin.reflect.KType
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.memberFunctions
 
 abstract class MoanHolder<T>(
-  context: Context,
+  val context: Context,
   val name: String,
   val type: KType,
   protected val moanFactory: () -> T
 ) : AutoCloseable {
 
-  val contextPath = context.toString()
   internal val postConstructHooks = ConcurrentLinkedQueue<(T) -> Unit>()
   private val closeListeners = ConcurrentLinkedQueue<Runnable>()
 
@@ -37,6 +39,33 @@ abstract class MoanHolder<T>(
 
   fun addCloseListener(listener: Runnable) {
     closeListeners += listener
+  }
+
+  protected fun init(instance: T) {
+    val type = instance!!::class
+    when (instance) {
+      is Initializable -> {
+        for (fn in type.memberFunctions) {
+          if (fn.findAnnotation<Init>() != null) {
+            postConstructHooks += { fn.callBy(context.args(fn)) }
+          }
+        }
+      }
+    }
+    postConstructHooks.removeIf { h ->
+      try {
+        h(instance)
+      } catch (e: Throwable) {
+        val ex = MoanCreationException(name, e)
+        try {
+          close()
+        } catch (x: Throwable) {
+          ex.addSuppressed(x)
+        }
+        throw ex
+      }
+      true
+    }
   }
 
   override fun close() {
@@ -123,31 +152,18 @@ abstract class MemoizedMoanHolder<T>(
       if (currentMoan == null) {
         synchronized(this) {
           if (currentMoan == null) {
-            val logger = contextPath.asLogger
+            val logger = context.path.asLogger
             logger.log(INFO, "Initializing moan $name of $type")
             val m = moanFactory()
             currentMoan = m
             if (m is Moan) {
               preDestroyHooks.addFirst { m.destroy() }
-              postConstructHooks.add { m.init() }
+              postConstructHooks += { m.init() }
             }
             if (m is AutoCloseable) {
               preDestroyHooks.addFirst { m.close() }
             }
-            postConstructHooks.removeIf { h ->
-              try {
-                h(m)
-              } catch (e: Throwable) {
-                val ex = MoanCreationException(name, e)
-                try {
-                  close()
-                } catch (x: Throwable) {
-                  ex.addSuppressed(x)
-                }
-                throw ex
-              }
-              true
-            }
+            init(m)
             logger.log(INFO, "Initialized moan $name of $type")
           }
         }
@@ -166,12 +182,9 @@ abstract class StatelessMoanHolder<T>(
     get() {
       val m = moanFactory()
       if (m is Moan) {
-        m.init()
+        postConstructHooks += { m.init() }
       }
-      postConstructHooks.removeIf { h ->
-        h(m)
-        true
-      }
+      init(m)
       return m
     }
 }

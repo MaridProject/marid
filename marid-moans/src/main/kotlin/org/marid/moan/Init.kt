@@ -17,13 +17,6 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KClass
-
-class MoanCreationException(name: String, cause: Throwable) : RuntimeException(name, cause)
-class MoanDestructionException(name: String) : RuntimeException(name)
-class ScopeDestructionException(name: String) : RuntimeException(name)
-class ContextCloseException(name: String) : RuntimeException(name)
-class ModuleInitializationException(name: String, cause: Throwable): RuntimeException(name, cause)
-class DuplicatedMoanException(name: String) : RuntimeException(name)
-class ContextBoundException(targetClass: KClass<out Initializable>) : RuntimeException(targetClass.qualifiedName)
-class MultipleBindingException(message: String) : RuntimeException(message)
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION)
+annotation class Init

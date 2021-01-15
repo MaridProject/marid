@@ -17,11 +17,6 @@
  */
 package org.marid.moan
 
-import kotlin.reflect.KProperty
+interface Initializable {
 
-interface ContextAware {
-
-  val context: Context get() = Context.contextFor(this) ?: throw ContextBoundException(this::class)
-
-  operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T = context.getValue(thisRef, property)
 }
