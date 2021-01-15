@@ -21,9 +21,11 @@ import com.sun.javafx.css.StyleManager
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
+import javafx.scene.paint.Color
 import javafx.stage.Stage
 import org.marid.ide.context.fxContext
 import org.marid.ide.context.link
+import org.marid.ide.icons.MaridIconFx
 import org.marid.ide.logging.logger
 import org.marid.ide.main.MainModule
 import org.marid.ide.main.MainPane
@@ -48,6 +50,7 @@ class App : Application() {
       .init(::MainModule)
     val mainPane: MainPane by context
     val scene = Scene(mainPane, 800.0, 600.0)
+    primaryStage.icons += listOf(16, 24, 32).map { MaridIconFx.getIcon(it, Color.GREEN) }
     primaryStage.isMaximized = true
     primaryStage.scene = scene
     primaryStage.show()

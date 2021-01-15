@@ -62,7 +62,7 @@ abstract class Module(val context: Context) {
     return args
   }
 
-  fun singleton(callable: KCallable<*>, name: String = callable.safeName) {
+  fun singleton(callable: KCallable<*>, name: String = callable.safeName): SingletonMoanHolder<*> {
     val type = callable.returnType
     val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
       SingletonMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
@@ -70,9 +70,10 @@ abstract class Module(val context: Context) {
       SingletonMoanHolder(context, name, type) { callable.callBy(args(callable)) }
     }
     context.register(h)
+    return h
   }
 
-  fun prototype(callable: KCallable<*>, name: String = callable.safeName) {
+  fun prototype(callable: KCallable<*>, name: String = callable.safeName): PrototypeMoanHolder<*> {
     val type = callable.returnType
     val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
       PrototypeMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
@@ -80,9 +81,10 @@ abstract class Module(val context: Context) {
       PrototypeMoanHolder(context, name, type) { callable.callBy(args(callable)) }
     }
     context.register(h)
+    return h
   }
 
-  fun singleton(callable: KCallable<*>, scope: Scope, name: String = callable.safeName) {
+  fun singleton(callable: KCallable<*>, scope: Scope, name: String = callable.safeName): ScopedMoanHolder<*> {
     val type = callable.returnType
     val h = if (ContextAware::class.createType().isSupertypeOf(type)) {
       ScopedMoanHolder(context, name, type) { Context.withContext(context, callable.callBy(args(callable))) }
@@ -90,6 +92,7 @@ abstract class Module(val context: Context) {
       ScopedMoanHolder(context, name, type) { callable.callBy(args(callable)) }
     }
     context.register(h, scope)
+    return h
   }
 
   override fun toString(): String = javaClass.name
