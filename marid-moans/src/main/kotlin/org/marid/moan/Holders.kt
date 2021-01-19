@@ -25,12 +25,7 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 
-abstract class MoanHolder<T>(
-  val context: Context,
-  val name: String,
-  val type: KType,
-  protected val moanFactory: () -> T
-) : AutoCloseable {
+abstract class MoanHolder<T>(val context: Context, val name: String, val type: KType, val factory: () -> T) {
 
   internal val postConstructHooks = ConcurrentLinkedQueue<(T) -> Unit>()
   private val closeListeners = ConcurrentLinkedQueue<Runnable>()
@@ -68,7 +63,7 @@ abstract class MoanHolder<T>(
     }
   }
 
-  override fun close() {
+  open fun close() {
     val exception = IllegalStateException("Unable to call close listeners")
     closeListeners.removeIf {
       try {
@@ -86,12 +81,8 @@ abstract class MoanHolder<T>(
   override fun toString(): String = "${javaClass.simpleName}($name: $type)"
 }
 
-abstract class DestroyAwareMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : MoanHolder<T>(context, name, type, f) {
+abstract class DestroyAwareMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  MoanHolder<T>(context, name, type, f) {
 
   @Volatile private var closed = false
   protected val preDestroyHooks = ConcurrentLinkedDeque<(T) -> Unit>()
@@ -138,12 +129,8 @@ abstract class DestroyAwareMoanHolder<T>(
   }
 }
 
-abstract class MemoizedMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : DestroyAwareMoanHolder<T>(context, name, type, f) {
+abstract class MemoizedMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  DestroyAwareMoanHolder<T>(context, name, type, f) {
 
   @Volatile override var currentMoan: T? = null
 
@@ -154,7 +141,7 @@ abstract class MemoizedMoanHolder<T>(
           if (currentMoan == null) {
             val logger = context.path.asLogger
             logger.log(INFO, "Initializing moan $name of $type")
-            val m = moanFactory()
+            val m = factory()
             currentMoan = m
             if (m is Moan) {
               preDestroyHooks.addFirst { m.destroy() }
@@ -172,15 +159,11 @@ abstract class MemoizedMoanHolder<T>(
     }
 }
 
-abstract class StatelessMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : MoanHolder<T>(context, name, type, f) {
+abstract class StatelessMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  MoanHolder<T>(context, name, type, f) {
   override val moan: T
     get() {
-      val m = moanFactory()
+      val m = factory()
       if (m is Moan) {
         postConstructHooks += { m.init() }
       }
@@ -189,23 +172,11 @@ abstract class StatelessMoanHolder<T>(
     }
 }
 
-class SingletonMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : MemoizedMoanHolder<T>(context, name, type, f)
+class SingletonMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  MemoizedMoanHolder<T>(context, name, type, f)
 
-class PrototypeMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : StatelessMoanHolder<T>(context, name, type, f)
+class PrototypeMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  StatelessMoanHolder<T>(context, name, type, f)
 
-class ScopedMoanHolder<T>(
-  context: Context,
-  name: String,
-  type: KType,
-  f: () -> T
-) : MemoizedMoanHolder<T>(context, name, type, f)
+class ScopedMoanHolder<T>(context: Context, name: String, type: KType, f: () -> T) :
+  MemoizedMoanHolder<T>(context, name, type, f)

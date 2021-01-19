@@ -89,6 +89,13 @@ class Context private constructor(val name: String, val parent: Context?, closer
         }
       }
       Ref::class -> by(type.arguments.first().type!!, name, optional)
+      Context::class -> {
+        if (name == null) {
+          MoanResult(this, false)
+        } else {
+          MoanResult(generateSequence(this) { it.parent }.find { it.name == name } ?: this, false)
+        }
+      }
       else -> {
         if (name == null) {
           by0(type, name, optional)
