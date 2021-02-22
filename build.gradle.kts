@@ -67,7 +67,11 @@ subprojects {
     useJUnitPlatform()
   }
 
+  val jupiterVersion = "5.7.0"
+
   dependencies {
     "compileOnly"(group = "org.jetbrains", name = "annotations", version = "20.1.0")
+    "testImplementation"(group = "org.junit.jupiter", name = "junit-jupiter-params", version = jupiterVersion)
+    "testRuntimeOnly"(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = jupiterVersion)
   }
 }
