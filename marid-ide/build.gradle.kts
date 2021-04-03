@@ -3,7 +3,7 @@ plugins {
   kotlin("jvm")
 }
 
-val openjfxVersion = "15.0.1"
+val openjfxVersion = "16"
 
 dependencies {
   implementation(project(":marid-common"))
