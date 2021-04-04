@@ -3,7 +3,7 @@ plugins {
   id("net.kyori.indra.license-header").version("1.2.1").apply(false)
 }
 
-group = "org.example"
+group = "org.marid"
 version = "1.0-SNAPSHOT"
 
 val javaVersion = JavaVersion.VERSION_15
@@ -38,7 +38,11 @@ subprojects {
     kotlinOptions.javaParameters = true
     kotlinOptions.jvmTarget = javaVersion.toString()
     kotlinOptions.allWarningsAsErrors = true
-    kotlinOptions.freeCompilerArgs = listOf("-Xjvm-default=all")
+    kotlinOptions.freeCompilerArgs = listOf(
+      "-Xjvm-default=all",
+      "-Xemit-jvm-type-annotations",
+      "-Xstring-concat=indy-with-constants"
+    )
   }
 
   tasks.withType<Test> {
@@ -67,7 +71,7 @@ subprojects {
     useJUnitPlatform()
   }
 
-  val jupiterVersion = "5.7.0"
+  val jupiterVersion = "5.7.1"
 
   dependencies {
     "compileOnly"(group = "org.jetbrains", name = "annotations", version = "20.1.0")
