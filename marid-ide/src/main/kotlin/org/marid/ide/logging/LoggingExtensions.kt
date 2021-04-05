@@ -23,8 +23,8 @@ import java.util.logging.Level
 import java.util.logging.LogRecord
 import java.util.logging.Logger
 
-@Suppress("EXPERIMENTAL_FEATURE_WARNING")
-inline class MaridLogger(val logger: Logger) {
+@JvmInline
+value class MaridLogger(val logger: Logger) {
 
   inline fun record(level: Level, message: String): LogRecord {
     val record = LogRecord(level, message)

@@ -15,23 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.moan
+package org.marid.annotations;
 
-import java.util.logging.Level
-import java.util.logging.LogRecord
-import java.util.logging.Logger
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@JvmInline
-internal value class LoggerWrapper(private val logger: Logger) {
-  fun log(level: Level, message: String, thrown: Throwable? = null) {
-    val record = LogRecord(level, message)
-    record.loggerName = logger.name
-    record.sourceMethodName = null
-    record.thrown = thrown
-    logger.log(record)
-  }
+@Target({ElementType.LOCAL_VARIABLE})
+@Retention(RetentionPolicy.CLASS)
+public @interface Infer {
 }
-
-internal inline val String.asLogger get() = LoggerWrapper(Logger.getLogger(this))
-
-typealias DependencyMapper = (Module) -> Sequence<Module>

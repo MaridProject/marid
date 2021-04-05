@@ -12,5 +12,6 @@ dependencies {
   api(group = "org.apache.maven.resolver", name = "maven-resolver-transport-http", version = mavenResolverVersion)
   api(group = "org.apache.maven.resolver", name = "maven-resolver-transport-file", version = mavenResolverVersion)
   api(kotlin("reflect"))
+  api(project(":marid-runtime"))
   testApi(project(":marid-test"))
 }

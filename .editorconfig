@@ -59,6 +59,8 @@ ij_kotlin_continuation_indent_in_supertype_lists = false
 ij_kotlin_field_annotation_wrap = off
 ij_kotlin_parameter_annotation_wrap = off
 ij_kotlin_method_annotation_wrap = off
+ij_kotlin_space_before_type_colon = false
+ij_kotlin_space_before_extend_colon = false
 
 [*.xml]
 indent_size = 2

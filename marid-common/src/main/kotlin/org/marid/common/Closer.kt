@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-class Closer {
+class Closer private constructor() {
 
   private val closeables = ConcurrentLinkedDeque<AutoCloseable>()
 
@@ -142,7 +142,7 @@ class Closer {
   }
 
   companion object {
-    inline operator fun <T> invoke(f: Closer.() -> T): T {
+    operator fun <T> invoke(f: Closer.() -> T): T {
       val c = Closer()
       val r = try {
         f(c)
