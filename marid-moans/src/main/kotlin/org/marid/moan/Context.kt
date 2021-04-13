@@ -34,17 +34,18 @@ import kotlin.reflect.full.isSubtypeOf
 
 typealias Closer = (Runnable) -> Runnable
 
-class Context private constructor(val name: String, val parent: Context?, closer: Closer) : MoanFetcher, AutoCloseable {
+class Context private constructor(val name: String, val parent: Context?, closer: Closer): MoanFetcher, AutoCloseable {
 
   private val queue = ConcurrentLinkedDeque<MoanHolder<*>>()
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
   private val namedMap = ConcurrentHashMap<String, MoanHolder<*>>()
   private val closeListeners = ConcurrentLinkedDeque<() -> Unit>()
-  private val uid = UIDS.getAndUpdate { it.inc() }
+  private val uid = UIDS.getAndUpdate(BigInteger::inc)
 
   val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
 
   init {
+    listOf<String>().iterator().asSequence()
     val name = this.path
     val queue = this.queue
     val typedMap = this.typedMap
@@ -165,7 +166,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
     }
   }
 
-  fun <T, H : MoanHolder<T>> register(holder: H, scope: Scope? = null) {
+  fun <T, H: MoanHolder<T>> register(holder: H, scope: Scope? = null) {
     namedMap.compute(holder.name) { n, old ->
       if (old == null) {
         if (scope != null && holder is ScopedMoanHolder<*>) {
@@ -235,7 +236,7 @@ class Context private constructor(val name: String, val parent: Context?, closer
 
     operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
 
-    fun <T, H : MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
+    fun <T, H: MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
       postConstructHooks.add(hook)
       return this
     }
