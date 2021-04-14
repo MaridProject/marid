@@ -1,5 +1,5 @@
 plugins {
-  kotlin("jvm").version("1.5.0-M2").apply(false)
+  kotlin("jvm").version("1.5.0-RC").apply(false)
   id("net.kyori.indra.license-header").version("1.3.1").apply(false)
 }
 
@@ -14,7 +14,6 @@ subprojects {
 
   repositories {
     mavenCentral()
-    jcenter()
   }
 
   afterEvaluate {
