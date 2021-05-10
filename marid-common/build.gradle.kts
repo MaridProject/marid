@@ -2,7 +2,7 @@ plugins {
   kotlin("jvm")
 }
 
-val mavenResolverVersion = "1.6.2"
+val mavenResolverVersion = "1.6.3"
 
 dependencies {
   api(group = "com.google.guava", name = "guava", version = "30.1.1-jre")
