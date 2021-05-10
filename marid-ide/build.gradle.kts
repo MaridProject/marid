@@ -23,10 +23,10 @@ dependencies {
     else -> "linux"
   }
 
-  implementation(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion, classifier = curOs)
-  implementation(group = "org.openjfx", name = "javafx-media", version = openjfxVersion, classifier = curOs)
-  implementation(group = "org.openjfx", name = "javafx-base", version = openjfxVersion, classifier = curOs)
-  implementation(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion, classifier = curOs)
-  implementation(group = "org.openjfx", name = "javafx-graphics", version = openjfxVersion, classifier = curOs)
+  compileOnly(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion, classifier = curOs)
+  compileOnly(group = "org.openjfx", name = "javafx-media", version = openjfxVersion, classifier = curOs)
+  compileOnly(group = "org.openjfx", name = "javafx-base", version = openjfxVersion, classifier = curOs)
+  compileOnly(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion, classifier = curOs)
+  compileOnly(group = "org.openjfx", name = "javafx-graphics", version = openjfxVersion, classifier = curOs)
 }
 

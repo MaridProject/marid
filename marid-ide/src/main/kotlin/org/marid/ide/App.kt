@@ -26,13 +26,16 @@ import javafx.stage.Stage
 import org.marid.ide.context.fxContext
 import org.marid.ide.context.link
 import org.marid.ide.icons.MaridIconFx
+import org.marid.ide.logging.IdeLogHandler
 import org.marid.ide.logging.logger
 import org.marid.ide.main.MainModule
 import org.marid.ide.main.MainPane
+import java.util.logging.Logger
 
-class App : Application() {
+class App: Application() {
 
   override fun init() {
+    Logger.getLogger("").addHandler(IdeLogHandler)
     logger.info("Setting UA stylesheet")
     setUserAgentStylesheet(STYLESHEET_CASPIAN)
     val url = Thread.currentThread().contextClassLoader.getResource("dark.css")

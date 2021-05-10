@@ -17,17 +17,42 @@
  */
 package org.marid.ide
 
-import javafx.application.Application
-import org.marid.ide.logging.IdeLogHandler
 import org.marid.ide.logging.IdeLogManager
-import java.util.logging.Logger
+import java.net.URL
+import java.net.URLClassLoader
+import java.util.regex.Pattern
+import kotlin.io.path.Path
 
 object AppLauncher {
   @JvmStatic fun main(args: Array<String>) {
     // initialize logging
     System.setProperty("java.util.logging.manager", IdeLogManager::class.java.name)
-    Logger.getLogger("").addHandler(IdeLogHandler)
-    // launch JavaFX application
-    Application.launch(App::class.java, *args)
+    val classpath = System.getProperty("java.class.path")
+    val controlsRegex = Pattern.compile(".+javafx-controls-(.+)[.]jar$")
+    var ver = ""
+    val urls = classpath.split(':')
+      .map { Path(it).toUri().toURL() }
+      .onEach { url ->
+        val matcher = controlsRegex.matcher(url.path)
+        if (matcher.matches()) {
+          ver = matcher.group(1)
+        }
+      }
+    val remoteUrls = listOf("base", "graphics", "controls", "media", "swing")
+      .map { URL("https://repo1.maven.org/maven2/org/openjfx/javafx-$it/$ver/javafx-$it-$ver-${os()}.jar") }
+    val cl = URLClassLoader("marid", (urls + remoteUrls).toTypedArray(), ClassLoader.getPlatformClassLoader())
+    val applicationClass = cl.loadClass("javafx.application.Application")
+    val appClass = cl.loadClass("org.marid.ide.App")
+    val launchMethod = applicationClass.getMethod("launch", Class::class.java, Array<String>::class.java)
+    launchMethod.invoke(null, appClass, args)
+  }
+
+  private fun os(): String {
+    val text = System.getProperty("os.name").lowercase()
+    return when {
+      text.contains("win") -> "win"
+      text.contains("mac") -> "mac"
+      else -> "linux"
+    }
   }
 }
