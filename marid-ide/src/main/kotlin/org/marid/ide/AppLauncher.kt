@@ -27,6 +27,26 @@ object AppLauncher {
   @JvmStatic fun main(args: Array<String>) {
     // initialize logging
     System.setProperty("java.util.logging.manager", IdeLogManager::class.java.name)
+    val (ver, urls) = urls()
+    val remoteUrls = listOf("base", "graphics", "controls", "media", "swing")
+      .map { URL("https://repo1.maven.org/maven2/org/openjfx/javafx-$it/$ver/javafx-$it-$ver-$os.jar") }
+    val cl = URLClassLoader("marid", (urls + remoteUrls).toTypedArray(), ClassLoader.getPlatformClassLoader())
+    val applicationClass = cl.loadClass("javafx.application.Application")
+    val appClass = cl.loadClass("org.marid.ide.App")
+    val launchMethod = applicationClass.getMethod("launch", Class::class.java, Array<String>::class.java)
+    launchMethod.invoke(null, appClass, args)
+  }
+
+  private val os: String by lazy {
+    val text = System.getProperty("os.name").lowercase()
+    when {
+      text.contains("win") -> "win"
+      text.contains("mac") -> "mac"
+      else -> "linux"
+    }
+  }
+
+  private fun urls(): Pair<String, List<URL>> {
     val classpath = System.getProperty("java.class.path")
     val controlsRegex = Pattern.compile(".+javafx-controls-(.+)[.]jar$")
     var ver = ""
@@ -38,21 +58,6 @@ object AppLauncher {
           ver = matcher.group(1)
         }
       }
-    val remoteUrls = listOf("base", "graphics", "controls", "media", "swing")
-      .map { URL("https://repo1.maven.org/maven2/org/openjfx/javafx-$it/$ver/javafx-$it-$ver-${os()}.jar") }
-    val cl = URLClassLoader("marid", (urls + remoteUrls).toTypedArray(), ClassLoader.getPlatformClassLoader())
-    val applicationClass = cl.loadClass("javafx.application.Application")
-    val appClass = cl.loadClass("org.marid.ide.App")
-    val launchMethod = applicationClass.getMethod("launch", Class::class.java, Array<String>::class.java)
-    launchMethod.invoke(null, appClass, args)
-  }
-
-  private fun os(): String {
-    val text = System.getProperty("os.name").lowercase()
-    return when {
-      text.contains("win") -> "win"
-      text.contains("mac") -> "mac"
-      else -> "linux"
-    }
+    return Pair(ver, urls)
   }
 }
