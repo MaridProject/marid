@@ -78,13 +78,13 @@ public class AppLauncher {
     try (var scanner = new Scanner(depsListUrl.openStream(), UTF_8)) {
       while (scanner.hasNextLine()) {
         var jar = scanner.nextLine();
-        var matcher = pattern.matcher(jar);
-        if (matcher.matches()) {
-          if (!matcher.group(1).equals(os)) {
-            continue;
-          }
-        }
         var task = new FutureTask<>(() -> {
+          var matcher = pattern.matcher(jar);
+          if (matcher.matches()) {
+            if (!matcher.group(1).equals(os)) {
+              return null;
+            }
+          }
           var jarUrl = requireNonNull(parentClassLoader.getResource("deps/" + jar));
           var targetFile = tempDir.resolve(jar);
           try (var is = jarUrl.openStream()) {
@@ -101,7 +101,10 @@ public class AppLauncher {
     // make custom classpath
     var urls = new ArrayList<URL>();
     for (var f : futures) {
-      urls.add(f.get());
+      var url = f.get();
+      if (url != null) {
+        urls.add(url);
+      }
     }
     var javaClassPath = System.getProperty("java.class.path");
     var javaClassPathParts = javaClassPath.split(File.pathSeparator);
