@@ -35,7 +35,7 @@ import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.LogRecord
 
-object IdeLogHandler : Handler() {
+object IdeLogHandler: Handler() {
 
   private val outputDir = Files.createDirectories(Path.of(System.getProperty("user.home"), ".marid", "logs"))
   private val outputFile = outputDir.resolve(now().format(ofPattern("yyyy-MM-dd-HH-mm-ss-SSS'.log'")))
