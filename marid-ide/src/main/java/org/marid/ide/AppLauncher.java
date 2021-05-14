@@ -99,7 +99,7 @@ public class AppLauncher {
       }
     }
     // make custom classpath
-    var urls = new ArrayList<URL>();
+    var urls = new ArrayList<URL>(futures.size());
     for (var f : futures) {
       var url = f.get();
       if (url != null) {
