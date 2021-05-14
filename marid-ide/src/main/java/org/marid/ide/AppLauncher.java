@@ -30,7 +30,9 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Scanner;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -70,7 +72,6 @@ public class AppLauncher {
     }
     // copy jars
     var pattern = Pattern.compile("javafx-\\w++-[\\d.]++-(\\w++).jar");
-    var pool = new ForkJoinPool(32);
     var parentClassLoader = Thread.currentThread().getContextClassLoader();
     var depsListUrl = requireNonNull(parentClassLoader.getResource("deps.list"));
     var futures = new ArrayList<Future<URL>>();
@@ -83,14 +84,18 @@ public class AppLauncher {
             continue;
           }
         }
-        futures.add(pool.submit(() -> {
+        var task = new FutureTask<>(() -> {
           var jarUrl = requireNonNull(parentClassLoader.getResource("deps/" + jar));
           var targetFile = tempDir.resolve(jar);
           try (var is = jarUrl.openStream()) {
             Files.copy(is, targetFile);
           }
           return targetFile.toUri().toURL();
-        }));
+        });
+        var thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+        futures.add(task);
       }
     }
     // make custom classpath
@@ -109,10 +114,6 @@ public class AppLauncher {
       classLoader.close();
       return null;
     });
-    pool.shutdown();
-    if (!pool.awaitTermination(1L, TimeUnit.MINUTES)) {
-      throw new CancellationException();
-    }
     // launch application
     var applicationClass = classLoader.loadClass("javafx.application.Application");
     var appClass = classLoader.loadClass("org.marid.ide.App");
