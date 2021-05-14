@@ -1,36 +1,47 @@
 plugins {
-  application
   kotlin("jvm")
 }
 
 val openjfxVersion = "16"
 
-application {
-  mainClass.set("org.marid.ide.AppLauncher")
-}
-
 dependencies {
-  implementation(project(":marid-common"))
-  implementation(project(":marid-moans"))
+  compileOnly(project(":marid-common"))
+  compileOnly(project(":marid-moans"))
 
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.2.0")
-  implementation(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
+  compileOnly(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.2.0")
+  compileOnly(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
 
-  implementation(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion)
-  implementation(group = "org.openjfx", name = "javafx-media", version = openjfxVersion)
-  implementation(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion)
+  compileOnly(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion)
+  compileOnly(group = "org.openjfx", name = "javafx-media", version = openjfxVersion)
+  compileOnly(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion)
 
-  val curOsName = System.getProperty("os.name").toLowerCase()
-  val curOs = when {
-    curOsName.contains("win") -> "win"
-    curOsName.contains("mac") -> "mac"
-    else -> "linux"
+  for (os in listOf("linux", "mac", "win")) {
+    compileOnly(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion, classifier = os)
+    compileOnly(group = "org.openjfx", name = "javafx-media", version = openjfxVersion, classifier = os)
+    compileOnly(group = "org.openjfx", name = "javafx-base", version = openjfxVersion, classifier = os)
+    compileOnly(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion, classifier = os)
+    compileOnly(group = "org.openjfx", name = "javafx-graphics", version = openjfxVersion, classifier = os)
   }
-
-  compileOnly(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion, classifier = curOs)
-  compileOnly(group = "org.openjfx", name = "javafx-media", version = openjfxVersion, classifier = curOs)
-  compileOnly(group = "org.openjfx", name = "javafx-base", version = openjfxVersion, classifier = curOs)
-  compileOnly(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion, classifier = curOs)
-  compileOnly(group = "org.openjfx", name = "javafx-graphics", version = openjfxVersion, classifier = curOs)
 }
 
+tasks.getByName("processResources", ProcessResources::class) {
+  doLast {
+    val depsDir = destinationDir.resolve("deps").also { it.mkdirs() }
+    destinationDir.resolve("deps.list").printWriter().use { w ->
+      project.configurations.compileOnly.get().also { c ->
+        c.incoming.artifacts.artifactFiles.forEach {
+          val fileName = it.name
+          w.println(fileName)
+          val destFile = depsDir.resolve(fileName)
+          it.copyTo(destFile, true, 65536)
+        }
+      }
+    }
+  }
+}
+
+tasks.getByName("jar", org.gradle.jvm.tasks.Jar::class) {
+  manifest {
+    attributes("Main-Class" to "org.marid.ide.AppLauncher")
+  }
+}
