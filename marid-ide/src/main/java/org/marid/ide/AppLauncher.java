@@ -19,10 +19,8 @@ package org.marid.ide;
 
 import org.marid.ide.logging.IdeLogManager;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileVisitResult;
@@ -31,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.concurrent.*;
 import java.util.regex.Pattern;
 
@@ -75,12 +74,9 @@ public class AppLauncher {
     var parentClassLoader = Thread.currentThread().getContextClassLoader();
     var depsListUrl = requireNonNull(parentClassLoader.getResource("deps.list"));
     var futures = new ArrayList<Future<URL>>();
-    try (var reader = new BufferedReader(new InputStreamReader(depsListUrl.openStream(), UTF_8))) {
-      while (true) {
-        var jar = reader.readLine();
-        if (jar == null) {
-          break;
-        }
+    try (var scanner = new Scanner(depsListUrl.openStream(), UTF_8)) {
+      while (scanner.hasNextLine()) {
+        var jar = scanner.nextLine();
         var matcher = pattern.matcher(jar);
         if (matcher.matches()) {
           if (!matcher.group(1).equals(os)) {
