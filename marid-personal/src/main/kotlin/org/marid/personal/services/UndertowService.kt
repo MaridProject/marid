@@ -17,5 +17,36 @@
  */
 package org.marid.personal.services
 
-class UndertowService {
+import io.undertow.Undertow
+import org.marid.moan.Moan
+import org.marid.personal.config.UndertowConfig
+import org.xnio.OptionMap
+import org.xnio.Options
+
+class UndertowService(config: UndertowConfig): Moan {
+
+  private val undertow = Undertow.builder()
+    .setIoThreads(config.ioThreads)
+    .setWorkerThreads(config.workerThreads)
+    .addListener(
+      Undertow.ListenerBuilder()
+        .setHost(config.host)
+        .setPort(config.port)
+        .setType(Undertow.ListenerType.HTTP)
+        .setOverrideSocketOptions(
+          OptionMap.builder()
+            .set(Options.SEND_BUFFER, 128 shl 10)
+            .set(Options.KEEP_ALIVE, true)
+            .map
+        )
+    )
+    .build()
+
+  override fun init() {
+    undertow.start()
+  }
+
+  override fun destroy() {
+    undertow.stop()
+  }
 }

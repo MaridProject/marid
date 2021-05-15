@@ -20,6 +20,8 @@ package org.marid.personal.config
 import org.marid.moan.Prop
 
 class UndertowConfig(
-  @Prop("PORT") val port: Int = 8080,
-  @Prop("HOST") val host: String = "0.0.0.0"
+  @Prop val port: Int = 8080,
+  @Prop val host: String = "0.0.0.0",
+  @Prop val ioThreads: Int = 8,
+  @Prop val workerThreads: Int = 8
 )

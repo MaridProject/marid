@@ -20,9 +20,11 @@ package org.marid.personal.modules
 import org.marid.moan.Context
 import org.marid.moan.Module
 import org.marid.personal.config.UndertowConfig
+import org.marid.personal.services.UndertowService
 
 class UndertowModule(context: Context): Module(context) {
   override fun init() {
     singleton(::UndertowConfig)
+    singleton(::UndertowService)
   }
 }

@@ -15,25 +15,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.personal
+package org.marid.personal.logging;
 
-import org.marid.moan.Context
-import org.marid.personal.logging.SiteLogHandler
-import org.marid.personal.logging.SiteLogManager
-import org.marid.personal.modules.SiteModule
-import org.marid.personal.services.UndertowService
-import java.util.*
-import java.util.logging.Logger
+import java.io.InputStream;
+import java.util.logging.LogManager;
 
-object Site {
-  @JvmStatic
-  fun main(args: Array<String>) {
-    System.setProperty("java.util.logging.manager", SiteLogManager::class.java.name)
-    Logger.getLogger("").addHandler(SiteLogHandler)
-    val context = Context("site")
-      .init(::SiteModule)
-    val service: UndertowService by context
-    assert(Objects.nonNull(service))
-    Runtime.getRuntime().addShutdownHook(Thread(context::close))
+public class SiteLogManager extends LogManager {
+  public SiteLogManager() {
+    super.reset();
+  }
+
+  @Override
+  public void reset() throws SecurityException {
+  }
+
+  @Override
+  public void readConfiguration() throws SecurityException {
+  }
+
+  @Override
+  public void readConfiguration(InputStream ins) throws SecurityException {
   }
 }
