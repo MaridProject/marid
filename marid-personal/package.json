@@ -1,0 +1,11 @@
+{
+    "scripts": {
+        "preinstall": "echo 'jjj'"
+    },
+    "dependencies": {
+        "lit": "^2.0.0-rc.2"
+    },
+    "devDependencies": {
+        "typescript": "^4.2.4"
+    }
+}

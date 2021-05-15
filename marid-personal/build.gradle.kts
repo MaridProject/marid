@@ -1,6 +1,12 @@
+import org.jetbrains.kotlin.js.parser.sourcemaps.JsonObject
+import org.jetbrains.kotlin.js.parser.sourcemaps.JsonString
+import org.jetbrains.kotlin.js.parser.sourcemaps.parseJson
+import java.util.regex.Pattern
+
 plugins {
   application
   kotlin("jvm")
+  id("com.github.node-gradle.node").version("3.1.0")
 }
 
 application {

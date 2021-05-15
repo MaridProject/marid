@@ -15,24 +15,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.personal
+package org.marid.personal.services
 
-import org.marid.moan.Context
-import org.marid.personal.logging.SiteLogHandler
-import org.marid.personal.logging.SiteLogManager
-import org.marid.personal.modules.SiteModule
-import org.marid.personal.services.UndertowService
-import java.util.logging.Logger
+interface TextsScanner {
 
-object Site {
-  @JvmStatic
-  fun main(args: Array<String>) {
-    System.setProperty("java.util.logging.manager", SiteLogManager::class.java.name)
-    Logger.getLogger("").addHandler(SiteLogHandler)
-    val context = Context("site")
-      .init(::SiteModule)
-    val service: UndertowService by context
-    service.start()
-    Runtime.getRuntime().addShutdownHook(Thread(context::close))
-  }
+}
+
+class TextsScannerImpl {
+
 }

@@ -42,7 +42,7 @@ class UndertowService(config: UndertowConfig): Moan {
     )
     .build()
 
-  override fun init() {
+  fun start() {
     undertow.start()
   }
 
