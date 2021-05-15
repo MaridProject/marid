@@ -8,7 +8,7 @@ dependencies {
   compileOnly(project(":marid-common"))
   compileOnly(project(":marid-moans"))
 
-  compileOnly(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.2.0")
+  compileOnly(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version = "1.2.1")
   compileOnly(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
 
   compileOnly(group = "org.openjfx", name = "javafx-controls", version = openjfxVersion)

@@ -25,16 +25,18 @@ import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level.INFO
-import kotlin.NoSuchElementException
-import kotlin.reflect.KCallable
-import kotlin.reflect.KClassifier
-import kotlin.reflect.KParameter
-import kotlin.reflect.KType
+import kotlin.reflect.*
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubtypeOf
 
 typealias Closer = (Runnable) -> Runnable
 
-class Context private constructor(val name: String, val parent: Context?, closer: Closer): MoanFetcher, AutoCloseable {
+class Context private constructor(
+  val name: String,
+  val parent: Context?,
+  closer: Closer,
+  val properties: Properties
+): MoanFetcher, AutoCloseable {
 
   private val queue = ConcurrentLinkedDeque<MoanHolder<*>>()
   private val typedMap = ConcurrentHashMap<KClassifier, ConcurrentLinkedQueue<MoanHolder<*>>>()
@@ -234,7 +236,12 @@ class Context private constructor(val name: String, val parent: Context?, closer
       Scope.cleanOnShutdown("ContextCleaner", CLEANABLES)
     }
 
-    operator fun invoke(name: String, parent: Context? = null, closer: Closer = { it }) = Context(name, parent, closer)
+    operator fun invoke(
+      name: String,
+      parent: Context? = null,
+      closer: Closer = { it },
+      properties: Properties = System.getProperties()
+    ) = Context(name, parent, closer, properties)
 
     fun <T, H: MoanHolder<T>> H.withInitHook(hook: (T) -> Unit): H {
       postConstructHooks.add(hook)
@@ -297,18 +304,64 @@ class Context private constructor(val name: String, val parent: Context?, closer
       val parameters = callable.parameters
       val args = mutableMapOf<KParameter, Any?>()
       for (p in parameters) {
-        when (p.kind) {
-          KParameter.Kind.INSTANCE -> args[p] = this
-          KParameter.Kind.EXTENSION_RECEIVER -> throw IllegalStateException()
-          KParameter.Kind.VALUE -> {
-            val result = by(p.type, p.name, p.isOptional)
-            if (!result.empty) {
-              args[p] = result.value
+        val propAnnotation = p.findAnnotation<Prop>()
+        if (propAnnotation == null) {
+          when (p.kind) {
+            KParameter.Kind.INSTANCE -> args[p] = this
+            KParameter.Kind.EXTENSION_RECEIVER -> throw IllegalStateException()
+            KParameter.Kind.VALUE -> {
+              val result = by(p.type, p.name, p.isOptional)
+              if (!result.empty) {
+                args[p] = result.value
+              }
             }
+          }
+        } else {
+          val propName = propAnnotation.value.ifEmpty { p.name }
+          val propValue = properties.getProperty(propName)
+          if (propValue == null) {
+            if (!p.isOptional) {
+              if (p.type.isMarkedNullable) {
+                args[p] = null
+              } else {
+                throw IllegalArgumentException("Parameter ${p.name} of $callable has no default value")
+              }
+            }
+          } else {
+            val converted = convert(propValue, p.type)
+            args[p] = converted
           }
         }
       }
       return args
+    }
+  }
+
+  private fun convert(arg: String, to: KType): Any {
+    val klass = to.classifier as KClass<*>
+    return when (klass) {
+      Int::class -> arg.toInt()
+      Long::class -> arg.toLong()
+      Boolean::class -> arg.toBoolean()
+      String::class -> arg
+      UInt::class -> arg.toUInt()
+      ULong::class -> arg.toULong()
+      List::class -> {
+        val values = arg.split(',')
+        val t = to.arguments[0].type!!
+        values.map { convert(it.trim(), t) }
+      }
+      Set::class -> {
+        val values = arg.split(',')
+        val t = to.arguments[0].type!!
+        values.map { convert(it.trim(), t) }.toSet()
+      }
+      SortedSet::class -> {
+        val values = arg.split(',')
+        val t = to.arguments[0].type!!
+        TreeSet(values.map { convert(it.trim(), t) })
+      }
+      else -> throw IllegalArgumentException("Unable to convert $arg to $to")
     }
   }
 }

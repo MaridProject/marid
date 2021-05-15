@@ -18,22 +18,35 @@
 package org.marid.moan
 
 import org.marid.moan.Context.Companion.args
+import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.logging.Level
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
+import kotlin.reflect.full.memberProperties
 
-abstract class Module(val context: Context) {
+abstract class Module(val context: Context): MoanFetcher by context {
 
-  open fun dependsOn(): Sequence<Module> = emptySequence()
+  private val dependencies = ConcurrentLinkedQueue<(Context) -> Module>()
+
+  open fun depends(moduleRegistry: ((Context) -> Module) -> Unit) {
+  }
 
   abstract fun init()
 
   internal fun initialize(dependencyMapper: DependencyMapper) {
+    depends(dependencies::add)
     val logger = context.path.asLogger
     try {
       logger.log(Level.INFO, "Initializing $this")
-      for (dep in dependsOn().flatMap(dependencyMapper)) {
-        dep.initialize(dependencyMapper)
+      for (dep in dependencies) {
+        val module = dep(context)
+        val added = synchronized(contextToModules) {
+          contextToModules.computeIfAbsent(context) { mutableSetOf() }.add(module)
+        }
+        if (added) {
+          module.initialize(dependencyMapper)
+        }
       }
       init()
       logger.log(Level.INFO, "Initialized $this")
@@ -65,6 +78,23 @@ abstract class Module(val context: Context) {
 
   override fun toString(): String = javaClass.name
 
+  override fun hashCode(): Int {
+    val members = this::class.memberProperties
+    val values = members.map { it.call(this) }
+    return values.hashCode()
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return if (javaClass === other?.javaClass) {
+      val members = this::class.memberProperties
+      val thisValues = members.map { it.call(this) }
+      val thatValues = members.map { it.call(other) }
+      thisValues.zip(thatValues).all { (v1, v2) -> v1 == v2 }
+    } else {
+      false
+    }
+  }
+
   internal companion object {
     internal val KCallable<*>.safeName
       get() = when (name) {
@@ -75,5 +105,7 @@ abstract class Module(val context: Context) {
           }
         else -> name
       }
+
+    private val contextToModules = WeakHashMap<Context, MutableSet<Module>>()
   }
 }
