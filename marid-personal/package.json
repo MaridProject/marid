@@ -1,8 +1,9 @@
 {
     "scripts": {
-        "preinstall": "echo 'jjj'"
+        "tsc": "node_modules/.bin/tsc"
     },
     "dependencies": {
+        "first-di": "^0.1.33",
         "lit": "^2.0.0-rc.2"
     },
     "devDependencies": {

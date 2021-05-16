@@ -1,12 +1,6 @@
-import org.jetbrains.kotlin.js.parser.sourcemaps.JsonObject
-import org.jetbrains.kotlin.js.parser.sourcemaps.JsonString
-import org.jetbrains.kotlin.js.parser.sourcemaps.parseJson
-import java.util.regex.Pattern
-
 plugins {
   application
   kotlin("jvm")
-  id("com.github.node-gradle.node").version("3.1.0")
 }
 
 application {
@@ -27,4 +21,20 @@ dependencies {
 
   implementation(group = "io.undertow", name = "undertow-core", version = "2.2.7.Final")
   implementation(group = "org.slf4j", name = "slf4j-jdk14", version = "1.7.30")
+}
+
+task("npmInstall", Exec::class) {
+  group = "npm"
+  executable = "npm"
+  args("install", "--no-optional")
+}
+
+task("npmTsc", Exec::class) {
+  group = "npm"
+  executable = "npm"
+  args("run", "tsc", "--", "-outDir", sourceSets.main.get().output.resourcesDir?.resolve("js"))
+}
+
+tasks.getByName("processResources") {
+  dependsOn("npmInstall", "npmTsc")
 }
