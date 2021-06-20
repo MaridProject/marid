@@ -1,12 +1,12 @@
 plugins {
-  kotlin("jvm").version("1.5.0").apply(false)
-  id("net.kyori.indra.license-header").version("1.3.1").apply(false)
+  kotlin("jvm").version("1.5.20-RC").apply(false)
+  id("net.kyori.indra.license-header").version("2.0.5").apply(false)
 }
 
 group = "org.marid"
 version = "1.0-SNAPSHOT"
 
-val javaVersion = JavaVersion.VERSION_15
+val javaVersion = JavaVersion.VERSION_16
 
 subprojects {
   apply(plugin = "java")
@@ -70,11 +70,11 @@ subprojects {
     useJUnitPlatform()
   }
 
-  val jupiterVersion = "5.7.1"
-
-  dependencies {
-    "compileOnly"(group = "org.jetbrains", name = "annotations", version = "20.1.0")
-    "testImplementation"(group = "org.junit.jupiter", name = "junit-jupiter-params", version = jupiterVersion)
-    "testRuntimeOnly"(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = jupiterVersion)
+  configurations.all {
+    resolutionStrategy.eachDependency {
+      if (requested.group == "org.jetbrains" && requested.name == "annotations") {
+        useVersion("21.0.1")
+      }
+    }
   }
 }

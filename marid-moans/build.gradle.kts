@@ -4,4 +4,5 @@ plugins {
 
 dependencies {
   api(kotlin("reflect"))
+  testImplementation(project(":marid-test"))
 }

@@ -22,6 +22,8 @@ dependencies {
     compileOnly(group = "org.openjfx", name = "javafx-swing", version = openjfxVersion, classifier = os)
     compileOnly(group = "org.openjfx", name = "javafx-graphics", version = openjfxVersion, classifier = os)
   }
+
+  testImplementation(project(":marid-test"))
 }
 
 tasks.getByName("processResources", ProcessResources::class) {
