@@ -128,9 +128,6 @@ class TypeResolver {
             return false
           }
           val layer = layers.poll()
-          if (layer == null) {
-            writer.appendLine("Empty layer: $elements")
-          }
           val pairs = TreeMap<VarName, VarCode>().also { m -> layer.forEach { (k, v) -> m[k] = v } }
           for (e in elements) {
             for (ee in e.enclosedElements) {

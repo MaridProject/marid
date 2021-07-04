@@ -100,6 +100,11 @@ class TypeResolverTest {
         mapOf("a" to "1"),
         mapOf("a" to "int"),
         listOf<String>()
+      ),
+      of(
+        mapOf("a" to "java.util.List.of(1, 2.0)"),
+        mapOf("a" to "java.util.List<java.lang.Number&java.lang.Comparable<? extends java.lang.Number&java.lang.Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>"),
+        listOf<String>()
       )
     )
   }
