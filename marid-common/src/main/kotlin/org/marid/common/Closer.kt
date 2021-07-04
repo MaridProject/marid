@@ -142,7 +142,7 @@ class Closer {
   }
 
   companion object {
-    inline operator fun <T> invoke(f: Closer.() -> T): T {
+    operator fun <T> invoke(f: Closer.() -> T): T {
       val c = Closer()
       val r = try {
         f(c)

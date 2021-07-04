@@ -17,7 +17,10 @@
  */
 package org.marid.types
 
-import com.google.common.jimfs.Jimfs
+import com.sun.source.tree.VariableTree
+import com.sun.source.util.Trees
+import infer.Infer
+import infer.Var
 import org.marid.common.Closer
 import java.io.StringWriter
 import java.lang.Thread.currentThread
@@ -30,7 +33,10 @@ import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.*
+import javax.lang.model.element.AnnotationMirror
+import javax.lang.model.element.Element
+import javax.lang.model.element.ExecutableElement
+import javax.lang.model.element.TypeElement
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Elements
 import javax.lang.model.util.Types
@@ -60,46 +66,51 @@ class TypeResolver {
     val diagnostics = DiagnosticListener<JavaFileObject>(diagnosticsQueue::offer)
 
     val result = ConcurrentSkipListMap<VarName, TypeMirror>()
-    Closer {
-      val fs = use(Jimfs.newFileSystem())
+    return Closer {
+      val rootDir = use(Files.createTempDirectory("javac"))
+      val cpDir = rootDir.resolve("cp").also(Files::createDirectory)
+      val inferDir = cpDir.resolve("infer").also(Files::createDirectory)
+
+      // copy Var annotation
+      for (annName in listOf("Var", "Infer")) {
+        currentThread().contextClassLoader.getResource("infer/$annName.class")!!.openStream().use { s ->
+          Files.copy(s, inferDir.resolve("$annName.class"))
+        }
+      }
+
+      // file manager
       val fm = use(compiler.getStandardFileManager(diagnostics, Locale.US, StandardCharsets.UTF_8))
-      fm.setLocationFromPaths(StandardLocation.CLASS_PATH, classpath)
+      fm.setLocationFromPaths(StandardLocation.CLASS_PATH, classpath + listOf(cpDir))
 
       // prepare directories
-      val rootDir = fs.rootDirectories.first()
       val sourceDir = rootDir.resolve("src").also(Files::createDirectory)
       val genDir = rootDir.resolve("gen").also(Files::createDirectory)
       val outDir = rootDir.resolve("out").also(Files::createDirectory)
-      val annDir = rootDir.resolve("ann").also(Files::createDirectory)
 
       // register directories
       fm.setLocationFromPaths(StandardLocation.SOURCE_PATH, listOf(sourceDir))
       fm.setLocationFromPaths(StandardLocation.SOURCE_OUTPUT, listOf(genDir))
       fm.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, listOf(outDir))
-      fm.setLocationFromPaths(StandardLocation.ANNOTATION_PROCESSOR_PATH, listOf(annDir))
-
-      // copy Var annotation
-      currentThread().contextClassLoader.getResource("Var.class")!!.openStream().use { s ->
-        Files.copy(s, annDir.resolve("Var.class"))
-      }
 
       // creating the compiler task
       val task = compiler.getTask(
         writer,
         fm,
         diagnostics,
-        listOf("-parameters"),
-        null, // a processor will be defined later
+        null,
+        null,
         listOf(writeCode(sourceDir, layers.peek(), fm, fileCounter))
       )
 
       // processor
       val processor = object: Processor {
+        var initialized = false
         lateinit var env: ProcessingEnvironment
         lateinit var types: Types
         lateinit var elements: Elements
         lateinit var filer: Filer
         lateinit var messager: Messager
+        lateinit var trees: Trees
 
         override fun init(processingEnv: ProcessingEnvironment) {
           env = processingEnv
@@ -107,28 +118,36 @@ class TypeResolver {
           elements = processingEnv.elementUtils
           filer = processingEnv.filer
           messager = processingEnv.messager
+          trees = Trees.instance(processingEnv)
+          initialized = true
         }
 
         override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
-          val elements = roundEnv.getElementsAnnotatedWithAny(*annotations.toTypedArray())
+          val elements = roundEnv.getElementsAnnotatedWith(Infer::class.java)
           if (elements.isEmpty()) {
             return false
           }
           val layer = layers.poll()
           if (layer == null) {
             writer.appendLine("Empty layer: $elements")
-            return false
           }
           val pairs = TreeMap<VarName, VarCode>().also { m -> layer.forEach { (k, v) -> m[k] = v } }
           for (e in elements) {
-            if (e is VariableElement) {
-              for (am in e.annotationMirrors) {
-                if (annotations.contains(am.annotationType.asElement())) {
-                  val name = VarName(am.elementValues.values.first().value.toString())
-                  val type = e.asType()
-                  result[name] = type
-                  if (pairs.remove(name) == null) {
-                    writer.appendLine("Absent name: $name")
+            for (ee in e.enclosedElements) {
+              if (ee is ExecutableElement && ee.simpleName.contentEquals("method")) {
+                val tree = trees.getTree(ee)
+                val eePath = trees.getPath(ee)
+                for (st in tree.body.statements) {
+                  if (st is VariableTree) {
+                    val stPath = trees.getPath(eePath.compilationUnit, st)
+                    val stElem = trees.getElement(stPath)
+                    val ann = stElem.getAnnotation(Var::class.java)
+                    if (ann != null) {
+                      val varName = VarName(ann.value)
+                      val type = stElem.asType()
+                      result[varName] = type
+                      pairs.remove(varName)
+                    }
                   }
                 }
               }
@@ -146,7 +165,7 @@ class TypeResolver {
           return false
         }
 
-        override fun getSupportedAnnotationTypes(): Set<String> = setOf("Var")
+        override fun getSupportedAnnotationTypes(): Set<String> = setOf("infer.Infer")
         override fun getSupportedOptions(): Set<String> = setOf()
         override fun getCompletions(e: Element, a: AM, m: ExecutableElement, t: String): Completions = emptyList()
         override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.RELEASE_16
@@ -155,11 +174,17 @@ class TypeResolver {
 
       // run task
       task.call()
-      return NormalTypeResult(
-        result,
-        processor.types,
-        writer.buffer.lineSequence().filterNot(String::isBlank).toList()
-      )
+      if (processor.initialized) {
+        NormalTypeResult(
+          result,
+          processor.types,
+          writer.buffer.lineSequence().filterNot(String::isBlank).toList() + diagnosticsQueue.map { it.toString() }
+        )
+      } else {
+        ErrorTypeResult(
+          writer.buffer.lineSequence().filterNot(String::isBlank).toList() + diagnosticsQueue.map { it.toString() }
+        )
+      }
     }
   }
 
@@ -197,23 +222,24 @@ class TypeResolver {
     val name = "F_${fc.getAndIncrement()}"
     val vc = AtomicInteger()
     val varNames = LinkedHashSet<String>()
-    val varsText = code.joinToString("\n", "\n", "\n") { (k, v) ->
+    val varsText = code.joinToString("\n    ") { (k, v) ->
       val varName = "v_${vc.getAndIncrement()}".also(varNames::add)
-      val escapedName = k.toString().replace("\"\"\"", "'''")
-      "    @Var(\"\"\"$escapedName\"\"\") var $varName = ${v.resolved};"
+      "@Var(\"${k.escaped}\") var $varName = ${v.resolved};"
     }
-    val consumeVarsText = varNames.joinToString("\n", "\n", "\n") { v ->
-      "    System.out.println($v);"
+    val consumeVarsText = varNames.joinToString("\n    ") { v ->
+      "System.out.println($v);"
     }
-    val classText = """
-      package infer;
-      public class $name {
-        public void method() {
-          $varsText
-          $consumeVarsText
-        }
-      }
-    """.trimIndent()
+    val classText =
+      """
+package infer;
+@Infer
+public class $name {
+  public void method() {
+    $varsText
+    $consumeVarsText
+  }
+}
+"""
     return name to classText
   }
 
