@@ -184,6 +184,7 @@ class TypeResolver {
           processor.types,
           processor.elements,
           processor.trees,
+          TypeClassLoader(fm.getClassLoader(StandardLocation.CLASS_PATH)),
           writer.buffer.lineSequence().filterNot(String::isBlank).toList() + diagnosticsQueue.map { it.toString() }
         )
       } else {
@@ -238,8 +239,7 @@ class TypeResolver {
     val consumeVarsText = varNames.joinToString("\n    ") { v ->
       "System.out.println($v);"
     }
-    val classText =
-      """
+    val classText = """
 package infer;
 @Infer
 public class $name {

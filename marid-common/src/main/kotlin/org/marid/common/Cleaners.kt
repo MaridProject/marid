@@ -15,31 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.types
+package org.marid.common
 
-import com.sun.source.util.Trees
-import javax.lang.model.type.TypeMirror
-import javax.lang.model.util.Elements
-import javax.lang.model.util.Types
+import java.lang.ref.Cleaner
 
-sealed interface TypeResult {
-  val allTypes: Map<VarName, TypeMirror>
-  val errors: List<String>
-}
-
-@JvmRecord
-data class NormalTypeResult(
-  override val allTypes: Map<VarName, TypeMirror>,
-  val types: Types,
-  val elements: Elements,
-  val trees: Trees,
-  val classLoader: TypeClassLoader,
-  override val errors: List<String>
-): TypeResult
-
-@JvmRecord
-data class ErrorTypeResult(
-  override val errors: List<String>
-): TypeResult {
-  override val allTypes: Map<VarName, TypeMirror> get() = emptyMap()
+object Cleaners {
+  val CLEANER: Cleaner = Cleaner.create()
 }
