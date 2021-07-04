@@ -182,6 +182,8 @@ class TypeResolver {
         NormalTypeResult(
           result,
           processor.types,
+          processor.elements,
+          processor.trees,
           writer.buffer.lineSequence().filterNot(String::isBlank).toList() + diagnosticsQueue.map { it.toString() }
         )
       } else {

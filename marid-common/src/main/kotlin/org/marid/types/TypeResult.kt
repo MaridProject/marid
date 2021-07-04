@@ -17,7 +17,9 @@
  */
 package org.marid.types
 
+import com.sun.source.util.Trees
 import javax.lang.model.type.TypeMirror
+import javax.lang.model.util.Elements
 import javax.lang.model.util.Types
 
 sealed interface TypeResult {
@@ -29,6 +31,8 @@ sealed interface TypeResult {
 data class NormalTypeResult(
   override val allTypes: Map<VarName, TypeMirror>,
   val types: Types,
+  val elements: Elements,
+  val trees: Trees,
   override val errors: List<String>
 ): TypeResult
 
