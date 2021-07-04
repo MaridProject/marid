@@ -127,6 +127,7 @@ class TypeResolver {
           if (elements.isEmpty()) {
             return false
           }
+
           val layer = layers.poll()
           val pairs = TreeMap<VarName, VarCode>().also { m -> layer.forEach { (k, v) -> m[k] = v } }
           for (e in elements) {
@@ -152,13 +153,19 @@ class TypeResolver {
           }
 
           if (pairs.isNotEmpty()) {
-            writer.appendLine("Non-empty pairs: $pairs")
+            for (e in elements) {
+              messager.printMessage(Diagnostic.Kind.ERROR, "Non-empty pairs: $pairs", e)
+            }
             return false
           }
+
           val nextLayer = layers.peek()
           if (nextLayer != null) {
-
+            val (name, text) = code(nextLayer, fileCounter, result)
+            val file = filer.createSourceFile("infer.$name", *elements.toTypedArray())
+            file.openWriter().use { it.write(text) }
           }
+
           return false
         }
 
@@ -215,12 +222,15 @@ class TypeResolver {
     return result
   }
 
-  private fun code(code: Pairs, fc: AtomicInteger): Pair<String, String> {
+  private fun code(code: Pairs, fc: AtomicInteger, types: Map<VarName, TypeMirror> = emptyMap()): Pair<String, String> {
     val name = "F_${fc.getAndIncrement()}"
-    val vc = AtomicInteger()
     val varNames = LinkedHashSet<String>()
+    val depsText = types.entries.joinToString("\n    ") { (k, v) ->
+      val varName = k.jvmName.also(varNames::add)
+      "@Var(\"${k.escaped}\") var $varName = ($v) null;"
+    }
     val varsText = code.joinToString("\n    ") { (k, v) ->
-      val varName = "v_${vc.getAndIncrement()}".also(varNames::add)
+      val varName = k.jvmName.also(varNames::add)
       "@Var(\"${k.escaped}\") var $varName = ${v.resolved};"
     }
     val consumeVarsText = varNames.joinToString("\n    ") { v ->
@@ -232,6 +242,7 @@ package infer;
 @Infer
 public class $name {
   public void method() {
+    $depsText
     $varsText
     $consumeVarsText
   }

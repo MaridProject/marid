@@ -46,7 +46,6 @@ class TypeResolverTest {
   fun resolve(map: Map<String, String>, expected: Map<String, String>, err: List<String>) {
     val code = TreeMap<VarName, VarCode>().also { map.forEach { k, v -> it[VarName(k)] = VarCode(v) } }
     val result = resolver.resolve(listOf(), code)
-    println(result)
     when (result) {
       is ErrorTypeResult -> {
         assertEquals(expected, mapOf<String, String>())
