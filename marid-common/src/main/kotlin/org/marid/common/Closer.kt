@@ -34,6 +34,10 @@ class Closer {
     return closeable
   }
 
+  fun register(code: () -> Unit) {
+    closeables += AutoCloseable(code)
+  }
+
   fun <T: Path> use(file: T): T {
     closeables += AutoCloseable {
       fun delete(f: Path) {

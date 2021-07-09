@@ -21,20 +21,22 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments.of
 import org.junit.jupiter.params.provider.MethodSource
+import org.marid.resolver.TypeResolver
+import org.marid.resolver.toLayers
 import java.io.StringWriter
 import java.util.*
 import java.util.stream.Stream
 
 class TypeResolverTest {
 
-  private val resolver = TypeResolver()
+  private val resolver = TypeResolver(listOf(), null)
 
   @ParameterizedTest
   @MethodSource("toLayersData")
   fun toLayersSimple(map: Map<String, String>, expected: List<List<Pair<String, String>>>, err: List<String>) {
     val code = TreeMap<VarName, VarCode>().also { map.forEach { k, v -> it[VarName(k)] = VarCode(v) } }
     val writer = StringWriter()
-    val result = resolver.toLayers(code, writer)
+    val result = toLayers(code, writer)
     val actual = result.map { l -> l.map { (k, v) -> k.toString() to v.toString() } }
     val actualErrors = writer.buffer.lineSequence().filterNot { it.isBlank() }.toList()
     assertEquals(expected, actual)
@@ -44,20 +46,9 @@ class TypeResolverTest {
   @ParameterizedTest
   @MethodSource("resolveData")
   fun resolve(map: Map<String, String>, expected: Map<String, String>, err: List<String>) {
-    val code = TreeMap<VarName, VarCode>().also { map.forEach { k, v -> it[VarName(k)] = VarCode(v) } }
-    val result = resolver.resolve(listOf(), code)
-    when (result) {
-      is ErrorTypeResult -> {
-        assertEquals(expected, mapOf<String, String>())
-      }
-      is NormalTypeResult -> {
-        val actual = TreeMap<String, String>().also {
-          result.allTypes.forEach { k, v -> it[k.toString()] = v.toString() }
-        }
-        assertEquals(err, result.errors)
-        assertEquals(expected, actual)
-      }
-    }
+    val input = TreeMap<VarName, VarCode>().also { m -> map.forEach { k, v -> m[VarName(k)] = VarCode(v) } }
+    val res = resolver.resolve(input)
+    println(res)
   }
 
   companion object {

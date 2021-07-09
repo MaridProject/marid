@@ -15,13 +15,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.marid.model.types
+package org.marid.resolver
 
-import org.junit.jupiter.api.Test
-
-class TypeTest {
-
-  @Test
-  fun typeTest() {
-  }
+interface TypeResolverProgress {
+  fun begin(remaining: Int)
+  fun done()
+  val cancelled: Boolean
+  var taskName: String
+  fun worked(work: Int, remaining: Int)
 }

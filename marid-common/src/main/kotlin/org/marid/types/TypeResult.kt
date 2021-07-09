@@ -18,9 +18,13 @@
 package org.marid.types
 
 import com.sun.source.util.Trees
+import java.util.concurrent.ConcurrentLinkedQueue
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Elements
 import javax.lang.model.util.Types
+
+typealias Pairs = List<Pair<VarName, VarCode>>
+typealias Layers = ConcurrentLinkedQueue<out Pairs>
 
 sealed interface TypeResult {
   val allTypes: Map<VarName, TypeMirror>

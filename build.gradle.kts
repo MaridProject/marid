@@ -1,6 +1,6 @@
 plugins {
   kotlin("jvm").version("1.5.20").apply(false)
-  id("net.kyori.indra.license-header").version("2.0.5").apply(false)
+  id("org.cadixdev.licenser").version("0.6.1")
 }
 
 group = "org.marid"
@@ -10,7 +10,7 @@ val javaVersion = JavaVersion.VERSION_16
 
 subprojects {
   apply(plugin = "java")
-  apply(plugin = "net.kyori.indra.license-header")
+  apply(plugin = "org.cadixdev.licenser")
 
   repositories {
     mavenCentral()
@@ -36,7 +36,7 @@ subprojects {
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.javaParameters = true
     kotlinOptions.jvmTarget = javaVersion.toString()
-    kotlinOptions.allWarningsAsErrors = true
+    kotlinOptions.allWarningsAsErrors = false
     kotlinOptions.freeCompilerArgs = listOf(
       "-Xjvm-default=all",
       "-Xemit-jvm-type-annotations",
@@ -76,5 +76,12 @@ subprojects {
         useVersion("21.0.1")
       }
     }
+  }
+
+  license {
+    include("**/*.java")
+    include("**/*.kt")
+    setHeader(rootProject.file("license_header.txt"))
+    newLine(false)
   }
 }
