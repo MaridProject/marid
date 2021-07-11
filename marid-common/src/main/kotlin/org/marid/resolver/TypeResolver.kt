@@ -29,20 +29,14 @@ import org.eclipse.jdt.internal.compiler.ast.SingleMemberAnnotation
 import org.eclipse.jdt.internal.compiler.batch.CompilationUnit
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions
-import org.eclipse.jdt.internal.compiler.lookup.Binding
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblemFactory
 import org.marid.common.Closer
-import org.marid.types.Layers
-import org.marid.types.VarCode
-import org.marid.types.VarName
+import org.marid.resolver.ResolverResult.Companion.append
+import org.marid.resolver.Task.Companion.append
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.util.*
 import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.ConcurrentSkipListMap
 
 class TypeResolver(classpath: List<File>, progress: CompilationProgress?): AutoCloseable {
 
@@ -61,23 +55,23 @@ class TypeResolver(classpath: List<File>, progress: CompilationProgress?): AutoC
     }
   }
 
-  fun resolve(code: Map<VarName, VarCode>): Map<VarName, Binding> {
-    val layers = toLayers(code, out)
-    if (layers.isEmpty()) {
-      return emptyMap()
+  fun resolve(task: Task): ResolverResult {
+    val result = ResolverResult()
+    val tasks = task.toLayers()
+    if (tasks.isEmpty()) {
+      return result
     }
     cleanup()
-    compiler.unitsToProcess = arrayOfNulls(layers.size)
-    compiler.parseThreshold = layers.size
-    val types = TreeMap<VarName, Binding>()
-    layers.forEachIndexed { i, layer ->
+    compiler.unitsToProcess = arrayOfNulls(tasks.size)
+    compiler.parseThreshold = tasks.size
+    tasks.forEachIndexed { i, layer ->
       val w = StringWriter()
       val className = "C$i"
       w.appendLine("package infer;")
       w.appendLine("public class $className {")
       w.appendLine("  public void im() {")
-      types.forEach { (v, b) -> w.appendLine("    @Var(\"${v.escaped}\") var ${v.jvmName} = ($b) null;") }
-      layer.forEach { (v, c) -> w.appendLine("    @Var(\"${v.escaped}\") var ${v.jvmName} = ${c.resolved};") }
+      w.append("    ", result)
+      w.append("    ", layer)
       w.appendLine("  }")
       w.appendLine("}")
       val cu = CompilationUnit(w.toString().toCharArray(), "infer/$className.java", "UTF-8")
@@ -93,16 +87,11 @@ class TypeResolver(classpath: List<File>, progress: CompilationProgress?): AutoC
             .find { it.type.typeName.joinToString(".", transform = ::String) == "Var" } ?: continue
           val name = ann.memberValue.constant.stringValue()
           val binding = st.binding
-          types[VarName(name)] = binding
-          when (val t = binding.type) {
-            is ParameterizedTypeBinding -> {
-              println(t.methods())
-            }
-          }
+          result.add(name, binding.type)
         }
       }
     }
-    return types
+    return result
   }
 
   private fun cleanup() {
@@ -123,7 +112,6 @@ class TypeResolver(classpath: List<File>, progress: CompilationProgress?): AutoC
 private fun compilerOptions(): CompilerOptions {
   val opts = CompilerOptions()
   val level = ClassFileConstants.JDK16
-  opts.complianceLevel = level
   opts.sourceLevel = level
   opts.generateClassFiles = false
   opts.preserveAllLocalVariables = true
@@ -136,34 +124,4 @@ private fun compilerOptions(): CompilerOptions {
   opts.processAnnotations = true
   opts.storeAnnotations = true
   return opts
-}
-
-internal fun toLayers(map: Map<VarName, VarCode>, writer: StringWriter): Layers {
-  val mmap = ConcurrentSkipListMap(map)
-  val result = ConcurrentLinkedQueue(
-    listOf(ArrayList(
-      map.entries.flatMap { (k, v) ->
-        if (v.isRoot) {
-          mmap.remove(k)
-          listOf(k to v)
-        } else emptyList()
-      }
-    ))
-  )
-  result.removeIf { it.isEmpty() }
-  while (mmap.isNotEmpty()) {
-    val layer = ArrayList(mmap.entries.flatMap { (k, v) ->
-      if (v.varNames.all { n -> result.any { r -> r.any { e -> e.first == n } } }) {
-        mmap.remove(k)
-        listOf(k to v)
-      } else emptyList()
-    })
-    if (layer.isEmpty()) {
-      writer.appendLine("Circular dependencies: $mmap")
-      break
-    } else {
-      result += layer
-    }
-  }
-  return result
 }
