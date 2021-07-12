@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.marid.resolver.Task
 import org.marid.resolver.TypeResolver
 import java.util.stream.Stream
+import kotlin.test.assertEquals
 
 class TypeResolverTest {
 
@@ -33,7 +34,7 @@ class TypeResolverTest {
   fun resolve(map: Map<String, String>, expected: Map<String, String>, err: List<String>) {
     val task = Task().also { map.forEach { (k, v) -> it.add(k, v) } }
     val res = resolver.resolve(task)
-    println(res)
+    assertEquals(expected, res.toMap())
   }
 
   companion object {
@@ -45,7 +46,7 @@ class TypeResolverTest {
       ),
       of(
         mapOf("a" to "java.util.List.of(1, 2.0)"),
-        mapOf("a" to "java.util.List<java.lang.Number&java.lang.Comparable<? extends java.lang.Number&java.lang.Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>"),
+        mapOf("a" to "java.util.List<java.lang.Number&java.lang.Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>"),
         listOf<String>()
       )
     )
