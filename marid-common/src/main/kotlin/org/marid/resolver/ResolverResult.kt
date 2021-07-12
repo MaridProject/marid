@@ -43,7 +43,8 @@ class ResolverResult {
       for ((k, v) in result.map) {
         val annName = Task.escapedName(k)
         val jvmName = Task.jvmName(k)
-        appendLine("$prefix@Var(\"$annName\") var $jvmName = ($v) null;")
+        val typeName = String(v.signableName())
+        appendLine("$prefix@Var(\"$annName\") var $jvmName = ($typeName) null;")
       }
       return this
     }
