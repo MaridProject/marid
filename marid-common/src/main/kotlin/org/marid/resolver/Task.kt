@@ -1,11 +1,26 @@
+/*
+ * MARID, the visual component programming environment.
+ * Copyright (C) 2020 Dzmitry Auchynnikau
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package org.marid.resolver
 
 import org.apache.commons.codec.binary.Hex
-import org.apache.commons.text.StringEscapeUtils
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
 import java.util.regex.Pattern
-import kotlin.jvm.Throws
 
 class Task {
 
@@ -66,13 +81,13 @@ class Task {
 
     internal fun <T: Appendable> T.append(prefix: String, t: Task): T {
       t.mapping.forEach { (v, c) ->
-        appendLine("$prefix@Var(\"${escapedName(v)}\") var ${jvmName(v)} = ${resolved(c)};")
+        appendLine("${prefix}var ${jvmName(v)} = ${resolved(c)};")
       }
       return this
     }
 
     internal fun jvmName(v: String): String = "v_${Hex.encodeHexString(v.toByteArray(UTF_8))}"
-    internal fun escapedName(v: String): String = StringEscapeUtils.escapeJava(v)
+    internal fun fromJvmName(v: String): String = String(Hex.decodeHex(v.substring(2)))
     private fun placeholder(v: String): String = "@{$v}"
 
     private fun varNames(code: String): Set<String> {
