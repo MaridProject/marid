@@ -31,7 +31,7 @@ class TypeResolverTest {
 
   @ParameterizedTest
   @MethodSource("resolveData")
-  fun resolve(map: Map<String, String>, expected: Map<String, String>, err: List<String>) {
+  fun resolve(map: Map<String, String>, expected: Map<String, String>) {
     val task = Task().also { map.forEach { (k, v) -> it.add(k, v) } }
     val res = resolver.resolve(task)
     assertEquals(expected, res.toStringMap())
@@ -41,18 +41,19 @@ class TypeResolverTest {
     @JvmStatic fun resolveData() = Stream.of(
       of(
         mapOf("a" to "1"),
-        mapOf("a" to "int"),
-        listOf<String>()
+        mapOf("a" to "int")
       ),
       of(
         mapOf("a" to "java.util.List.of(1, 2.0)"),
-        mapOf("a" to "java.util.List<java.lang.Number&Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>"),
-        listOf<String>()
+        mapOf("a" to "java.util.List<java.lang.Number&Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>")
       ),
       of(
         mapOf("a" to "1", "b" to "java.util.Arrays.asList(@{a})", "c" to "java.util.List.of(@{b})"),
-        mapOf("a" to "int", "b" to "java.util.List<java.lang.Integer>", "c" to "java.util.List<java.util.List<java.lang.Integer>>"),
-        listOf<String>()
+        mapOf(
+          "a" to "int",
+          "b" to "java.util.List<java.lang.Integer>",
+          "c" to "java.util.List<java.util.List<java.lang.Integer>>"
+        )
       )
     )
   }

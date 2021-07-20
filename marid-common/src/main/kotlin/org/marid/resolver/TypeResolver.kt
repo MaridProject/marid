@@ -25,6 +25,8 @@ import java.io.StringWriter
 
 class TypeResolver(classpath: List<File>): AutoCloseable {
 
+  private val classpath = classpath.takeIf(List<*>::isNotEmpty)?.map(File::toString)?.toTypedArray()
+
   fun resolve(task: Task): ResolverResult {
     val result = ResolverResult()
     val tasks = task.toLayers()
@@ -33,7 +35,7 @@ class TypeResolver(classpath: List<File>): AutoCloseable {
     }
     val parser = ASTParser.newParser(AST.JLS_Latest)
     parser.setResolveBindings(true)
-    parser.setEnvironment(null, null, null, true)
+    parser.setEnvironment(classpath, null, null, true)
     parser.setCompilerOptions(
       mapOf(
         JavaCore.COMPILER_RELEASE to "enabled",
