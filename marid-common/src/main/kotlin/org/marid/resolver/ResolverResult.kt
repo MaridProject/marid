@@ -80,7 +80,7 @@ class ResolverResult {
       return when {
         t.isParameterizedType -> t.erasure.qualifiedName + t.typeArguments.joinToString(",", "<", ">") { toString(it) }
         t.isArray -> toString(t.componentType) + "[]"
-        t.isIntersectionType -> t.typeBounds.joinToString(" & ") { toString(it) }
+        t.isIntersectionType -> t.toString()
         else -> t.qualifiedName
       }
     }
