@@ -24,7 +24,7 @@ subprojects {
     }
   }
 
-  configure<JavaPluginConvention> {
+  configure<JavaPluginExtension> {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
   }
