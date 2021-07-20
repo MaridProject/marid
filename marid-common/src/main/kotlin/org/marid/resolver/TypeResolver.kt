@@ -21,11 +21,15 @@ import org.eclipse.jdt.core.JavaCore
 import org.eclipse.jdt.core.dom.*
 import org.marid.resolver.Task.Companion.append
 import java.io.File
-import java.io.StringWriter
 
 class TypeResolver(classpath: List<File>): AutoCloseable {
 
   private val classpath = classpath.takeIf(List<*>::isNotEmpty)?.map(File::toString)?.toTypedArray()
+  private val compilerOptions = mapOf(
+    JavaCore.COMPILER_RELEASE to "enabled",
+    JavaCore.COMPILER_SOURCE to "16",
+    JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM to "16"
+  )
 
   fun resolve(task: Task): ResolverResult {
     val result = ResolverResult()
@@ -36,17 +40,11 @@ class TypeResolver(classpath: List<File>): AutoCloseable {
     val parser = ASTParser.newParser(AST.JLS_Latest)
     parser.setResolveBindings(true)
     parser.setEnvironment(classpath, null, null, true)
-    parser.setCompilerOptions(
-      mapOf(
-        JavaCore.COMPILER_RELEASE to "enabled",
-        JavaCore.COMPILER_SOURCE to "16",
-        JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM to "16"
-      )
-    )
+    parser.setCompilerOptions(compilerOptions)
     parser.setBindingsRecovery(true)
     parser.setStatementsRecovery(true)
     parser.setKind(ASTParser.K_COMPILATION_UNIT)
-    val w = StringWriter()
+    val w = StringBuilder()
     val className = "C"
     parser.setUnitName("$className.java")
     w.appendLine("public class $className {")
