@@ -19,7 +19,6 @@ package org.marid.resolver
 
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.jdt.core.dom.*
-import org.marid.resolver.ResolverResult.Companion.append
 import org.marid.resolver.Task.Companion.append
 import java.io.File
 import java.io.StringWriter
@@ -45,26 +44,26 @@ class TypeResolver(classpath: List<File>): AutoCloseable {
     parser.setBindingsRecovery(true)
     parser.setStatementsRecovery(true)
     parser.setKind(ASTParser.K_COMPILATION_UNIT)
-    tasks.forEachIndexed { i, layer ->
-      val w = StringWriter()
-      val className = "C$i"
-      parser.setUnitName("$className.java")
-      w.appendLine("public class $className {")
-      w.appendLine("  public void im() {")
-      w.append("    ", result)
+    val w = StringWriter()
+    val className = "C"
+    parser.setUnitName("$className.java")
+    w.appendLine("public class $className {")
+    w.appendLine("  public void im() {")
+    tasks.forEach { layer ->
       w.append("    ", layer)
-      w.appendLine("  }")
-      w.appendLine("}")
-      parser.setSource(w.toString().toCharArray())
-      val cu = parser.createAST(null) as CompilationUnit
-      cu.accept(object : ASTVisitor() {
-        override fun visit(node: VariableDeclarationFragment): Boolean {
-          val typeBinding = node.resolveBinding().variableDeclaration.type
-          result.add(Task.fromJvmName(node.name.identifier), typeBinding)
-          return super.visit(node)
-        }
-      })
     }
+    w.appendLine("  }")
+    w.appendLine("}")
+    val code = w.toString()
+    parser.setSource(code.toCharArray())
+    val cu = parser.createAST(null) as CompilationUnit
+    cu.accept(object: ASTVisitor() {
+      override fun visit(node: VariableDeclarationFragment): Boolean {
+        val typeBinding = node.resolveBinding().variableDeclaration.type
+        result.add(Task.fromJvmName(node.name.identifier), typeBinding)
+        return super.visit(node)
+      }
+    })
     return result
   }
 

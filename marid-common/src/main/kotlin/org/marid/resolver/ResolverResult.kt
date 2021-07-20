@@ -19,7 +19,6 @@ package org.marid.resolver
 
 import com.google.common.collect.Maps
 import org.eclipse.jdt.core.dom.ITypeBinding
-import org.jetbrains.kotlin.ir.interpreter.toIrConst
 import java.util.*
 
 class ResolverResult {
