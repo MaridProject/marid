@@ -22,7 +22,7 @@ import org.eclipse.jdt.core.dom.*
 import org.marid.resolver.Task.Companion.append
 import java.io.File
 
-class TypeResolver(classpath: List<File>): AutoCloseable {
+class TypeResolver(classpath: List<File>) {
 
   private val classpath = classpath.takeIf(List<*>::isNotEmpty)?.map(File::toString)?.toTypedArray()
   private val compilerOptions = mapOf(
@@ -37,36 +37,42 @@ class TypeResolver(classpath: List<File>): AutoCloseable {
     if (tasks.isEmpty()) {
       return result
     }
-    val parser = ASTParser.newParser(AST.JLS_Latest)
-    parser.setResolveBindings(true)
-    parser.setEnvironment(classpath, null, null, true)
-    parser.setCompilerOptions(compilerOptions)
-    parser.setBindingsRecovery(true)
-    parser.setStatementsRecovery(true)
-    parser.setKind(ASTParser.K_COMPILATION_UNIT)
-    val w = StringBuilder()
-    val className = "C"
-    parser.setUnitName("$className.java")
-    w.appendLine("public class $className {")
-    w.appendLine("  public void im() {")
-    tasks.forEach { layer ->
-      w.append("    ", layer)
-    }
-    w.appendLine("  }")
-    w.appendLine("}")
-    val code = w.toString()
-    parser.setSource(code.toCharArray())
-    val cu = parser.createAST(null) as CompilationUnit
-    cu.accept(object: ASTVisitor() {
-      override fun visit(node: VariableDeclarationFragment): Boolean {
-        val typeBinding = node.resolveBinding().variableDeclaration.type
-        result.add(Task.fromJvmName(node.name.identifier), typeBinding)
-        return super.visit(node)
+    var depth = tasks.size
+    while (depth > 0) {
+      try {
+        val parser = ASTParser.newParser(AST.JLS_Latest)
+        parser.setResolveBindings(true)
+        parser.setEnvironment(classpath, null, null, true)
+        parser.setCompilerOptions(compilerOptions)
+        parser.setBindingsRecovery(true)
+        parser.setStatementsRecovery(true)
+        parser.setKind(ASTParser.K_COMPILATION_UNIT)
+        val w = StringBuilder()
+        val className = "C"
+        parser.setUnitName("$className.java")
+        w.appendLine("public class $className {")
+        w.appendLine("  public void im() {")
+        tasks.subList(0, depth).forEach { layer ->
+          w.append("    ", layer)
+        }
+        w.appendLine("  }")
+        w.appendLine("}")
+        val code = w.toString()
+        parser.setSource(code.toCharArray())
+        val cu = parser.createAST(null) as CompilationUnit
+        cu.accept(object: ASTVisitor() {
+          override fun visit(node: VariableDeclarationFragment): Boolean {
+            val typeBinding = node.resolveBinding().variableDeclaration.type
+            result.add(Task.fromJvmName(node.name.identifier), typeBinding)
+            return super.visit(node)
+          }
+        })
+        return result
+      } catch (e: Throwable) {
+        result.addError(e)
+        depth--
       }
-    })
+    }
     return result
-  }
-
-  override fun close() {
   }
 }
