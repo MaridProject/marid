@@ -31,7 +31,9 @@ class ResolverResult {
   }
 
   internal fun addError(error: Throwable) {
-    errors += error
+    if (errors.none { deepEquals(it, error) }) {
+      errors += error
+    }
   }
 
   val hasErrors: Boolean get() = errors.isNotEmpty()
@@ -65,8 +67,33 @@ class ResolverResult {
       return when {
         t.isParameterizedType -> t.erasure.qualifiedName + t.typeArguments.joinToString(",", "<", ">") { toString(it) }
         t.isArray -> toString(t.componentType) + "[]"
-        t.isIntersectionType -> t.toString()
+        t.isIntersectionType -> (listOf(t.bound) + t.interfaces).joinToString("&") { toString(it) }
         else -> t.qualifiedName
+      }
+    }
+
+    private fun deepEquals(t1: Throwable?, t2: Throwable?): Boolean {
+      when {
+        t1 === t2 -> return true
+        t1 != null && t2 != null && t1.javaClass == t2.javaClass -> when {
+          t1.message != t2.message -> return false
+          !deepEquals(t1.cause, t2.cause) -> return false
+          else -> {
+            val sup1 = t1.suppressed
+            val sup2 = t2.suppressed
+            if (sup1.size == sup2.size) {
+              if (sup1.indices.any { i -> !deepEquals(sup1[i], sup2[i]) }) {
+                return false
+              }
+              val st1 = t1.stackTrace
+              val st2 = t2.stackTrace
+              return st1.size == st2.size && st1.indices.all { i -> st1[i] == st2[i] }
+            } else {
+              return false
+            }
+          }
+        }
+        else -> return false
       }
     }
   }

@@ -45,7 +45,7 @@ class TypeResolverTest {
       ),
       of(
         mapOf("a" to "java.util.List.of(1, 2.0)"),
-        mapOf("a" to "java.util.List<java.lang.Number&Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>")
+        mapOf("a" to "java.util.List<java.lang.Number&java.lang.Comparable<?>&java.lang.constant.Constable&java.lang.constant.ConstantDesc>")
       ),
       of(
         mapOf("a" to "1", "b" to "java.util.Arrays.asList(@{a})", "c" to "java.util.List.of(@{b})"),

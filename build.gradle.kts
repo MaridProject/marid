@@ -73,7 +73,7 @@ subprojects {
   configurations.all {
     resolutionStrategy.eachDependency {
       if (requested.group == "org.jetbrains" && requested.name == "annotations") {
-        useVersion("21.0.1")
+        useVersion("22.0.0")
       }
     }
   }
