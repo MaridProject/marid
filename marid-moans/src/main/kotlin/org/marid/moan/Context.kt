@@ -44,7 +44,7 @@ class Context private constructor(
   private val closeListeners = ConcurrentLinkedDeque<() -> Unit>()
   private val uid = UIDS.getAndUpdate(BigInteger::inc)
 
-  val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
+  val path: String = generateSequence(this) { it.parent }.map { it.name }.reduce { a, b -> "$b/$a" }
 
   init {
     val name = this.path
