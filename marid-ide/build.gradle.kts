@@ -47,3 +47,11 @@ tasks.getByName("jar", org.gradle.jvm.tasks.Jar::class) {
     attributes("Main-Class" to "org.marid.ide.AppLauncher")
   }
 }
+
+task("run", Exec::class) {
+  group = "build"
+  dependsOn("jar")
+  executable = ProcessHandle.current().info().command().orElseThrow()
+  workingDir = buildDir.resolve("libs")
+  args("-jar", workingDir.resolve(project.name + ".jar"))
+}
