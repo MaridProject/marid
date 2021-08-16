@@ -47,7 +47,6 @@ class Context private constructor(
   val path: String = generateSequence(this, { it.parent }).map { it.name }.reduce { a, b -> "$b/$a" }
 
   init {
-    listOf<String>().iterator().asSequence()
     val name = this.path
     val queue = this.queue
     val typedMap = this.typedMap
